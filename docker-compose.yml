@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: school_db
+    environment:
+      POSTGRES_USER: school
+      POSTGRES_PASSWORD: school
+      POSTGRES_DB: school_db
+      # Deterministic collation so ORDER BY results match across machines.
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    ports:
+      # Change the host side (left) if 5432 is already taken locally.
+      - "5432:5432"
+    volumes:
+      - school_pgdata:/var/lib/postgresql/data
+      # Scripts run in filename order, once, on an empty data volume.
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U school -d school_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  school_pgdata:
