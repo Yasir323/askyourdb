@@ -251,3 +251,27 @@ def test_ollama_has_no_askyourdb_extra_yet(monkeypatch):
 
     assert "askyourdb[ollama]" not in str(error.value)
     assert "langchain-ollama" in str(error.value)
+
+
+def test_column_lists_enum_values():
+    column = Column("status", Integer(), "invoice_status", False, "", ("draft", "paid"))
+
+    assert str(column) == "status invoice_status NOT NULL /* one of: 'draft', 'paid' */"
+
+
+def test_schema_introspector_keeps_enum_values(monkeypatch):
+    from sqlalchemy.dialects.postgresql import ENUM
+
+    status = FakeColumn("status")
+    status.type = ENUM("draft", "issued", "paid", name="invoice_status")
+    metadata = FakeMetadata()
+    metadata.tables["students"].columns = [status]
+    monkeypatch.setattr(introspection_module, "create_engine", lambda dsn: FakeEngine())
+    monkeypatch.setattr(introspection_module, "MetaData", lambda: metadata)
+    monkeypatch.setattr(introspection_module, "inspect", lambda value: FakeInspector())
+
+    introspector = SchemaIntrospector("postgresql://test")
+    introspector.load_db()
+    rendered = models.render_schema(introspector.get_schema())
+
+    assert "status invoice_status NOT NULL /* one of: 'draft', 'issued', 'paid' */," in rendered

@@ -35,6 +35,7 @@ class SchemaIntrospector:
                     type_sql=column.type.compile(self._engine.dialect),
                     nullable=column.nullable,
                     default=self._server_default(column),
+                    enum_values=tuple(getattr(column.type, "enums", None) or ()),
                 ))
 
             # Primary key

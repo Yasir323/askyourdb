@@ -44,6 +44,9 @@ class Column:
     type_sql: str
     nullable: bool
     default: str = ""
+    #: Allowed values of an enum column. The compiled type is only the enum's
+    #: name, so without these the model has to guess the labels.
+    enum_values: tuple[str, ...] = ()
 
     def __str__(self) -> str:
         parts = [self.name, self.type_sql]
@@ -51,6 +54,8 @@ class Column:
             parts.append("NOT NULL")
         if self.default:
             parts.append(self.default)
+        if self.enum_values:
+            parts.append("/* one of: " + ", ".join(f"'{v}'" for v in self.enum_values) + " */")
         return " ".join(parts)
 
 
