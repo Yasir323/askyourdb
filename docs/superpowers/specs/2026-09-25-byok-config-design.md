@@ -14,7 +14,7 @@ and runs
 
 ```bash
 askyourdb ask "Which five customers spent the most last month?"
-askyourdb            # interactive REPL with follow-up context
+askyourdb            # interactive REPL
 ```
 
 The same engine is importable for Python users (secondary surface):
@@ -185,8 +185,9 @@ askyourdb [--config PATH] repl
   the answer, the SQL used, row count, and caveats (if any). `--rows` also prints
   the returned rows as a plain aligned text table. `--json` prints the full result
   dict as JSON instead (rows included) for scripting.
-- **REPL:** one `SQLAnalyst` and one `thread_id` for the whole session, so follow-up
-  questions keep context. Prompt `askyourdb> `; each answer printed like `ask`
+- **REPL:** one `SQLAnalyst` and one `thread_id` for the whole session. Note: the
+  current graph only passes the current question to the generator, so this does not
+  yet give conversational follow-ups; each question is answered independently. Prompt `askyourdb> `; each answer printed like `ask`
   (with rows). Blank lines are ignored; `exit`, `quit`, or Ctrl-D ends the session;
   Ctrl-C cancels the current input line without exiting. Line editing/history via
   `readline` when importable.
