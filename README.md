@@ -38,12 +38,23 @@ export ASKYOURDB_DSN="postgresql+psycopg://readonly_user:password@localhost:5432
 export ASKYOURDB_MODEL="anthropic:claude-sonnet-5"
 export ASKYOURDB_API_KEY="sk-ant-..."
 
-askyourdb ask "Which five customers spent the most last month?"
-askyourdb ask "How many orders were placed yesterday?" --rows   # also print the rows
-askyourdb ask "List active users by signup month" --json        # full result as JSON
+askyourdb ask "How many orders were placed yesterday?"
+askyourdb ask "Which five customers spent the most last month?" --verbose  # show the SQL too
+askyourdb ask "List active users by signup month" --json                   # full result as JSON
 ```
 
-`ask` prints the answer, the SQL that ran, the row count and any caveats.
+By default you get just the result. A single value is answered in a sentence
+("There are 500 students in total."). Anything else is a sentence followed by a table
+of up to 20 rows; `--json` gives every row. If askyourdb's automatic row limit (100
+rows unless the question asks for more, at most 1000) cut the result off, a note says so.
+
+While a question runs, a status line shows the current step and the time so far
+(`Writing SQL…`, `Checking SQL…`, `Reviewing SQL…`, `Running query…`, `Summarizing…`,
+or `Rewriting SQL (2/3): <reason>` on a retry). It only appears on a terminal.
+
+`--verbose` (before or after `ask`/`repl`) also prints the SQL that ran, the row count,
+caveats, retry reasons and the time each step took, and lets provider SDK warnings
+through; without it they are hidden.
 
 Run `askyourdb` with no arguments (or `askyourdb repl`) for an interactive session.
 Type a question at the `askyourdb>` prompt; type `exit` or `quit`, or press Ctrl-D, to

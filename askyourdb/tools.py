@@ -83,11 +83,13 @@ def _result(final_state: dict) -> dict:
     truncated = row_limit is not None and len(rows) >= row_limit
 
     if summary is not None:
+        # sql_used and row_count come from what actually ran, not from the
+        # summarizer's echo of them, which models sometimes get wrong.
         return {
             "success": True,
             "answer": summary.answer,
-            "row_count": summary.row_count,
-            "sql_used": summary.sql_used,
+            "row_count": len(rows),
+            "sql_used": query.sql,
             "caveats": summary.caveats,
             "rows": rows,
             "truncated": truncated,

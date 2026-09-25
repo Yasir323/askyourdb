@@ -92,3 +92,19 @@ def test_result_is_truncated_when_the_imposed_limit_is_hit():
     assert hit.invoke("q")["truncated"] is True
     assert under.invoke("q")["truncated"] is False
     assert own_limit.invoke("q")["truncated"] is False
+
+
+def test_sql_and_row_count_come_from_the_executed_query_not_the_model():
+    executed = SQLQuery(sql="SELECT n FROM t LIMIT 100", reasoning="r", tables_used=["t"])
+    state = {
+        "sql_query": executed,
+        # The summarizer model echoes these back, and may get them wrong.
+        "summary": ResultSummary(answer="a", row_count=1, sql_used="SELECT n FROM t"),
+        "rows": [{"n": 1}, {"n": 2}, {"n": 3}], "row_limit": 100,
+        "summary_error": None, "execution_error": None, "error_feedback": None,
+    }
+
+    result = build_query_database_tool(FakeGraph(state), "", "SQLite").invoke("q")
+
+    assert result["sql_used"] == "SELECT n FROM t LIMIT 100"
+    assert result["row_count"] == 3
