@@ -15,4 +15,4 @@ def test_langsmith_tracing_sets_default_project(monkeypatch):
     monkeypatch.delenv("LANGCHAIN_PROJECT", raising=False)
 
     assert configure_langsmith() is True
-    assert __import__("os").environ["LANGCHAIN_PROJECT"] == "sql-summarizer"
+    assert __import__("os").environ["LANGCHAIN_PROJECT"] == "askyourdb"

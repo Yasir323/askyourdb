@@ -126,6 +126,8 @@ print(result["sql_used"])
 - `AnalystConfig.from_env()` reads the `ASKYOURDB_*` variables. Keyword arguments
   override them, for example `AnalystConfig.from_env(model="openai:gpt-5")`.
 - `AnalystConfig.from_toml("askyourdb.toml")` reads a config file.
+- `ask(question, thread_id=None)` answers on a throwaway LangGraph thread and
+  discards its checkpoints afterwards; pass a `thread_id` to keep them.
 - `ask()` returns a dict with the keys `success`, `answer`, `row_count`, `sql_used`,
   `caveats`, `rows` and `error`.
 - `analyst.as_tool()` returns a LangChain `StructuredTool` named `query_database`
@@ -137,8 +139,9 @@ print(result["sql_used"])
 | Code | Meaning                                                          |
 |------|------------------------------------------------------------------|
 | `0`  | Success                                                          |
-| `1`  | The question could not be answered (the error is printed)        |
+| `1`  | The question could not be answered (the error is printed to stderr; with `--json` the result goes to stdout) |
 | `2`  | Configuration error, missing provider package, or the database could not be reached |
+| `130`| Interrupted with Ctrl-C                                          |
 
 ## Development and the school demo
 

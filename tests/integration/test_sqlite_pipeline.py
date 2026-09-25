@@ -148,4 +148,5 @@ def test_sqlite_database_to_validated_query(monkeypatch, tmp_path):
 
     assert [row["first_name"] for row in rows] == ["Grace", "Ada"]
     assert [row["unpaid_amount"] for row in rows] == [80, 75]
+    introspector.close()
     engine.dispose()

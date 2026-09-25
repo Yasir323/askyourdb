@@ -118,8 +118,10 @@ def test_ask_failed_query_exits_1(capsys):
 
     code = cli.main(["ask", "q"])
 
+    captured = capsys.readouterr()
     assert code == 1
-    assert "Error: Unknown column 'bad'" in capsys.readouterr().out
+    assert "Error: Unknown column 'bad'" in captured.err
+    assert "Error:" not in captured.out
 
 
 def test_ask_provider_exception_exits_1_without_traceback(capsys):
@@ -127,11 +129,11 @@ def test_ask_provider_exception_exits_1_without_traceback(capsys):
 
     code = cli.main(["ask", "q"])
 
-    out = capsys.readouterr().out
+    err = capsys.readouterr().err
     assert code == 1
-    assert "Error: RuntimeError: 401 invalid x-api-key" in out
-    assert "more detail" not in out
-    assert "Traceback" not in out
+    assert "Error: RuntimeError: 401 invalid x-api-key" in err
+    assert "more detail" not in err
+    assert "Traceback" not in err
 
 
 def test_config_error_exits_2(monkeypatch, capsys):
@@ -177,7 +179,7 @@ def test_config_file_is_used_instead_of_env(tmp_path):
     assert config.database.dsn.get_secret_value() == "sqlite:///file.db"
 
 
-def test_repl_is_default_and_shares_thread(monkeypatch, capsys):
+def test_repl_is_default_and_answers_each_question_on_its_own(monkeypatch, capsys):
     FakeAnalyst.results = [OK, OK]
     feed_input(monkeypatch, "", "first?", "  second?  ", "exit")
 
@@ -185,9 +187,8 @@ def test_repl_is_default_and_shares_thread(monkeypatch, capsys):
 
     analyst = FakeAnalyst.instances[0]
     assert code == 0
-    assert [q for q, _ in analyst.questions] == ["first?", "second?"]
-    thread_ids = {t for _, t in analyst.questions}
-    assert len(thread_ids) == 1 and None not in thread_ids
+    # No shared thread: SQLAnalyst.ask discards each question's checkpoints.
+    assert analyst.questions == [("first?", None), ("second?", None)]
     assert "12.50" in capsys.readouterr().out  # REPL shows rows
     assert analyst.closed is True
 
@@ -222,3 +223,27 @@ def test_unexpected_startup_error_exits_2_without_traceback(capsys):
     assert code == 2
     assert "RuntimeError: boom" in err
     assert "long detail" not in err
+
+
+def test_failed_query_json_stays_on_stdout(capsys):
+    FakeAnalyst.results = [FAILED]
+
+    code = cli.main(["ask", "q", "--json"])
+
+    assert code == 1
+    assert json.loads(capsys.readouterr().out)["error"] == "Unknown column 'bad'"
+
+
+def test_ctrl_c_during_ask_exits_130_without_traceback(capsys):
+    FakeAnalyst.results = [KeyboardInterrupt()]
+
+    code = cli.main(["ask", "q"])
+
+    assert code == 130
+    assert FakeAnalyst.instances[0].closed is True
+
+
+def test_ctrl_c_during_startup_exits_130(capsys):
+    FakeAnalyst.init_error = KeyboardInterrupt()
+
+    assert cli.main(["ask", "q"]) == 130

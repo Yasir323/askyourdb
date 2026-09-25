@@ -65,7 +65,18 @@ class SQLAnalyst:
         )
 
     def ask(self, question: str, thread_id: str | None = None) -> dict:
-        return self.as_tool(thread_id).invoke(question)
+        """Answer one question.
+
+        With no thread_id the question gets a throwaway thread whose checkpoints
+        are deleted afterwards, so repeated calls don't accumulate state.
+        """
+        if thread_id is not None:
+            return self.as_tool(thread_id).invoke(question)
+        thread_id = f"askyourdb-{uuid4()}"
+        try:
+            return self.as_tool(thread_id).invoke(question)
+        finally:
+            self._graph.checkpointer.delete_thread(thread_id)
 
     def close(self) -> None:
         self._introspector.close()

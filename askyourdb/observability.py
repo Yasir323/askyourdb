@@ -9,6 +9,6 @@ def configure_langsmith() -> bool:
         "yes",
     }
     if enabled and os.environ.get("LANGCHAIN_API_KEY"):
-        os.environ.setdefault("LANGCHAIN_PROJECT", "sql-summarizer")
+        os.environ.setdefault("LANGCHAIN_PROJECT", "askyourdb")
         return True
     return False

@@ -12,6 +12,9 @@ from pydantic import (
 )
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
+from sqlglot.dialects.dialect import Dialect
+
+from askyourdb.sql_validator import sqlglot_dialect
 
 
 class ConfigError(ValueError):
@@ -63,6 +66,14 @@ class LLMConfig(_Model):
             )
         return value
 
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _blank_key_is_unset(cls, value):
+        # api_key = "" in TOML means "use the provider's env var", as in from_env.
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     @property
     def provider(self) -> str:
         return self.model.partition(":")[0]
@@ -97,6 +108,7 @@ class DatabaseConfig(_Model):
     @model_validator(mode="after")
     def _infer_dialect(self) -> "DatabaseConfig":
         if self.dialect and self.dialect.strip():
+            _check_dialect(self.dialect)
             return self
         try:
             backend = make_url(self.dsn.get_secret_value()).get_backend_name()
@@ -115,6 +127,16 @@ class DatabaseConfig(_Model):
             )
         self.dialect = dialect
         return self
+
+
+def _check_dialect(dialect: str) -> None:
+    try:
+        Dialect.get_or_raise(sqlglot_dialect(dialect))
+    except ValueError:
+        raise ValueError(
+            f"unknown SQL dialect '{dialect}'; use a sqlglot dialect name such as "
+            f"PostgreSQL, SQLite, MySQL, Snowflake or TSQL (env {ENV_PREFIX}DIALECT)"
+        ) from None
 
 
 class AnalystConfig(_Model):

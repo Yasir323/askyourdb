@@ -185,14 +185,13 @@ askyourdb [--config PATH] repl
   the answer, the SQL used, row count, and caveats (if any). `--rows` also prints
   the returned rows as a plain aligned text table. `--json` prints the full result
   dict as JSON instead (rows included) for scripting.
-- **REPL:** one `SQLAnalyst` and one `thread_id` for the whole session. Note: the
-  current graph only passes the current question to the generator, so this does not
-  yet give conversational follow-ups; each question is answered independently. Prompt `askyourdb> `; each answer printed like `ask`
+- **REPL:** one `SQLAnalyst` for the whole session. Each question is answered independently on a throwaway thread whose checkpoints are discarded (the graph only passes the current question to the generator, so a shared thread gave no follow-up context and grew memory without bound). Prompt `askyourdb> `; each answer printed like `ask`
   (with rows). Blank lines are ignored; `exit`, `quit`, or Ctrl-D ends the session;
   Ctrl-C cancels the current input line without exiting. Line editing/history via
   `readline` when importable.
-- **Exit codes:** `0` success; `1` query workflow failed (error message printed);
+- **Exit codes:** `0` success; `1` query workflow failed (error message printed to stderr);
   `2` configuration error (`ConfigError` message printed to stderr, no traceback).
+  `130` interrupted with Ctrl-C.
   In the REPL a failed question prints the error and continues.
 - The engine is always closed on exit (`with SQLAnalyst(...)`).
 

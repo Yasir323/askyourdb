@@ -142,3 +142,23 @@ def test_missing_database_driver_is_a_config_error(sqlite_dsn, fake_llm, monkeyp
 
     with pytest.raises(ConfigError, match=r"psycopg2.*postgresql\+psycopg://"):
         SQLAnalyst(make_config(sqlite_dsn))
+
+
+def stored_threads(analyst):
+    return {item.config["configurable"]["thread_id"]
+            for item in analyst._graph.checkpointer.list(None)}
+
+
+def test_ask_without_thread_id_discards_its_checkpoints(sqlite_dsn, fake_llm):
+    with SQLAnalyst(make_config(sqlite_dsn)) as analyst:
+        analyst.ask("Who are the people?")
+        analyst.ask("Who are the people?")
+
+        assert stored_threads(analyst) == set()
+
+
+def test_ask_with_thread_id_keeps_its_checkpoints(sqlite_dsn, fake_llm):
+    with SQLAnalyst(make_config(sqlite_dsn)) as analyst:
+        analyst.ask("Who are the people?", thread_id="mine")
+
+        assert stored_threads(analyst) == {"mine"}

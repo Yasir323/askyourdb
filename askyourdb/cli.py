@@ -1,7 +1,6 @@
 import argparse
 import json
 import sys
-from uuid import uuid4
 
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -12,6 +11,7 @@ from askyourdb.observability import configure_langsmith
 EXIT_OK = 0
 EXIT_QUERY_FAILED = 1
 EXIT_CONFIG_ERROR = 2
+EXIT_INTERRUPTED = 130
 EXIT_COMMANDS = {"exit", "quit"}
 
 
@@ -36,6 +36,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    try:
+        return _run(args)
+    except KeyboardInterrupt:
+        # Ctrl-C during startup or a one-shot question.
+        print(file=sys.stderr)
+        return EXIT_INTERRUPTED
+
+
+def _run(args: argparse.Namespace) -> int:
     configure_langsmith()
     try:
         config = (
@@ -65,13 +74,14 @@ def run_ask(analyst: SQLAnalyst, question: str, *, as_json: bool, show_rows: boo
     if as_json:
         print(json.dumps(result, indent=2, default=str))
     else:
-        print(format_result(result, show_rows=show_rows))
+        # Failures go to stderr so scripts can keep stdout for answers.
+        print(format_result(result, show_rows=show_rows),
+              file=sys.stdout if result["success"] else sys.stderr)
     return EXIT_OK if result["success"] else EXIT_QUERY_FAILED
 
 
 def run_repl(analyst: SQLAnalyst) -> int:
     _enable_line_editing()
-    thread_id = f"askyourdb-repl-{uuid4()}"
     print("askyourdb: ask a question, or type 'exit' to quit.")
     while True:
         try:
@@ -87,7 +97,7 @@ def run_repl(analyst: SQLAnalyst) -> int:
         if question.lower() in EXIT_COMMANDS:
             return EXIT_OK
         try:
-            result = _ask(analyst, question, thread_id)
+            result = _ask(analyst, question)
         except KeyboardInterrupt:
             print("Cancelled.")
             continue
@@ -127,10 +137,10 @@ def format_rows(rows: list[dict]) -> str:
     )
 
 
-def _ask(analyst: SQLAnalyst, question: str, thread_id: str | None = None) -> dict:
+def _ask(analyst: SQLAnalyst, question: str) -> dict:
     """Run one question; turn provider/network errors into a failed result."""
     try:
-        return analyst.ask(question, thread_id=thread_id)
+        return analyst.ask(question)
     except Exception as error:
         return {
             "success": False, "answer": None, "row_count": 0, "sql_used": None,

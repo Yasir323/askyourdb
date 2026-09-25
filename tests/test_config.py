@@ -212,3 +212,18 @@ def test_stage_with_same_provider_inherits_generator_api_key():
     assert semantic.model == "anthropic:claude-haiku-4-5"
     assert semantic.api_key.get_secret_value() == "sk-gen"
     assert config.models.resolved_summarizer.api_key is None
+
+
+@pytest.mark.parametrize("api_key", ["", "   "])
+def test_blank_toml_api_key_counts_as_unset(api_key):
+    assert LLMConfig(model="openai:gpt-5", api_key=api_key).api_key is None
+
+
+def test_unknown_dialect_is_rejected_at_config_time():
+    with pytest.raises(ValidationError, match="unknown SQL dialect 'SQL Server'"):
+        make_config(dialect="SQL Server")
+
+
+@pytest.mark.parametrize("dialect", ["PostgreSQL", "postgres", "SQLite", "tsql", "Snowflake"])
+def test_known_dialects_are_accepted(dialect):
+    assert make_config(dialect=dialect).database.dialect == dialect
