@@ -62,7 +62,6 @@ all = [
     { name = "langchain-anthropic" },
     { name = "langchain-google-genai" },
     { name = "langchain-groq" },
-    { name = "langchain-ollama" },
     { name = "langchain-openai" },
 ]
 anthropic = [
@@ -73,9 +72,6 @@ google = [
 ]
 groq = [
     { name = "langchain-groq" },
-]
-ollama = [
-    { name = "langchain-ollama" },
 ]
 openai = [
     { name = "langchain-openai" },
@@ -97,8 +93,6 @@ requires-dist = [
     { name = "langchain-google-genai", marker = "extra == 'google'", specifier = ">=4.3.7" },
     { name = "langchain-groq", marker = "extra == 'all'", specifier = ">=1.1.3" },
     { name = "langchain-groq", marker = "extra == 'groq'", specifier = ">=1.1.3" },
-    { name = "langchain-ollama", marker = "extra == 'all'", specifier = ">=1.1" },
-    { name = "langchain-ollama", marker = "extra == 'ollama'", specifier = ">=1.1" },
     { name = "langchain-openai", marker = "extra == 'all'", specifier = ">=1.6" },
     { name = "langchain-openai", marker = "extra == 'openai'", specifier = ">=1.6" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
@@ -106,7 +100,7 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.52" },
     { name = "sqlglot", specifier = ">=30.18.0" },
 ]
-provides-extras = ["anthropic", "openai", "google", "groq", "ollama", "all"]
+provides-extras = ["anthropic", "openai", "google", "groq", "all"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -854,19 +848,6 @@ wheels = [
 ]
 
 [[package]]
-name = "langchain-ollama"
-version = "1.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "langchain-core" },
-    { name = "ollama" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/9b/6641afe8a5bf807e454fd464eddfc7eb2f2df53cb0b29744381171f9c609/langchain_ollama-1.1.0.tar.gz", hash = "sha256:f776f56f6782ae4da7692579b94a6575906118318d1023b455d7207f9d059811", size = 133075, upload-time = "2026-04-07T02:48:00.873Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2c/b2/c2acb076590a98bee2816ed5f285e00df162a34238f9e276e175e14ebc35/langchain_ollama-1.1.0-py3-none-any.whl", hash = "sha256:43ac83a6eacb0f43855810739794dd55019e0d9b17bdcf3ecb3b1991ac3b59dd", size = 31413, upload-time = "2026-04-07T02:47:59.642Z" },
-]
-
-[[package]]
 name = "langchain-openai"
 version = "1.6.6"
 source = { registry = "https://pypi.org/simple" }
@@ -975,19 +956,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c9/0a/1acb2a3ffbccbe8f8dc358778967c9d2979e8a59b67ceba6eb54474324ab/langsmith-0.11.2.tar.gz", hash = "sha256:927694c939c9fb44187e0126cf718413c45ffce2324d480438e70eb0526e1380", size = 4841592, upload-time = "2026-08-27T22:31:34.004Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/00/d9/cec0c1d24dda8c67a23ad204d0167e50aee202460e9388488661d94513f5/langsmith-0.11.2-py3-none-any.whl", hash = "sha256:75258142d27dffcc5df331479704b23fc3fd812cfca0469119bb9055a842882f", size = 753928, upload-time = "2026-08-27T22:31:31.644Z" },
-]
-
-[[package]]
-name = "ollama"
-version = "0.6.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "httpx" },
-    { name = "pydantic" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fc/72/5f12423b6b39ca8430fbe56f77fcf4ef60f63067c7c4a2e30e200ed9ec16/ollama-0.6.2.tar.gz", hash = "sha256:936d55daa684f474364c098611c933626f8d6c7d67065c5b7ae0c477b508b07f", size = 53145, upload-time = "2026-04-29T21:21:15.018Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/ab/d6722beeb2d10f7a3b9ff49375708904fde18f82b5609a0bc4aeb5996a4d/ollama-0.6.2-py3-none-any.whl", hash = "sha256:3ad7daab28e5a973445c36a73882a3ef698c2ebb00e21e308652741577509f7d", size = 15115, upload-time = "2026-04-29T21:21:13.794Z" },
 ]
 
 [[package]]

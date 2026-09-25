@@ -39,11 +39,11 @@ def test_model_builders_create_structured_chains(monkeypatch):
         "students (student_id INTEGER)", "PostgreSQL", LLMConfig(model="openai:gpt-5"),
     )
     semantic = models.build_sql_semantic_validator(LLMConfig(model="groq:llama-3.3-70b"))
-    summarizer = models.build_result_summarizer(LLMConfig(model="ollama:llama3"))
+    summarizer = models.build_result_summarizer(LLMConfig(model="anthropic:claude-sonnet-5"))
 
     assert generator is not None and semantic is not None and summarizer is not None
     assert [args[0] for args, _ in calls] == [
-        "openai:gpt-5", "groq:llama-3.3-70b", "ollama:llama3",
+        "openai:gpt-5", "groq:llama-3.3-70b", "anthropic:claude-sonnet-5",
     ]
 
 
@@ -238,3 +238,16 @@ def test_build_llm_wraps_provider_init_errors_and_scrubs_key(monkeypatch):
     assert "Could not initialize model 'openai:gpt-5'" in message
     assert "Missing credentials" in message
     assert "sk-live-123" not in message
+
+
+def test_ollama_has_no_askyourdb_extra_yet(monkeypatch):
+    def missing(*args, **kwargs):
+        raise ImportError("requires the langchain-ollama package")
+
+    monkeypatch.setattr(models, "init_chat_model", missing)
+
+    with pytest.raises(ConfigError) as error:
+        models.build_llm(LLMConfig(model="ollama:llama3"))
+
+    assert "askyourdb[ollama]" not in str(error.value)
+    assert "langchain-ollama" in str(error.value)
