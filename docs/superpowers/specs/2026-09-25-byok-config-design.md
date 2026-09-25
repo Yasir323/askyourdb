@@ -5,11 +5,19 @@ Branch: `feature/byok-config`
 
 ## Goal
 
-Turn the text-to-SQL analyst into an installable Python library named **askyourdb**
+Turn the text-to-SQL analyst into an installable, CLI-first tool named **askyourdb**
 that anyone can point at their own database with their own LLM provider and API key
 (bring-your-own-key), without editing source code.
 
-Success: a user runs `pip install "askyourdb[anthropic]"`, then
+Success: a user runs `pip install "askyourdb[anthropic]"`, exports their key and DSN,
+and runs
+
+```bash
+askyourdb ask "Which five customers spent the most last month?"
+askyourdb            # interactive REPL with follow-up context
+```
+
+The same engine is importable for Python users (secondary surface):
 
 ```python
 from askyourdb import AnalystConfig, SQLAnalyst
@@ -24,7 +32,10 @@ with SQLAnalyst(config) as analyst:
 
 ## Decisions (from brainstorming)
 
-- Audience: Python library users (no CLI, no hosted/multi-user server).
+- Audience: CLI-first. Primary surface is the `askyourdb` command (one-shot `ask`
+  and an interactive REPL). The `SQLAnalyst` class that the CLI is built on is
+  importable and documented briefly as a secondary Python surface. No hosted /
+  multi-user server; a Streamlit UI is a possible follow-up, out of scope here.
 - Providers: any provider supported by LangChain `init_chat_model`, addressed as
   `provider:model` strings. Each provider SDK is an optional extra.
 - Minimal install: the core package depends on no LLM provider SDK.
@@ -40,11 +51,12 @@ with SQLAnalyst(config) as analyst:
 ## Package layout
 
 The `src/` package is moved to `askyourdb/` (import path `askyourdb.*`); all internal
-and test imports are updated. Module names inside are unchanged, plus two new
+and test imports are updated. Module names inside are unchanged, plus three new
 modules:
 
 - `askyourdb/config.py` — configuration models and loaders.
-- `askyourdb/analyst.py` — public `SQLAnalyst` entry point.
+- `askyourdb/analyst.py` — `SQLAnalyst` engine facade.
+- `askyourdb/cli.py` — `askyourdb` command (one-shot + REPL).
 
 `askyourdb/__init__.py` exports `AnalystConfig`, `LLMConfig`, `ModelsConfig`,
 `DatabaseConfig`, `ConfigError`, `SQLAnalyst`.
@@ -153,6 +165,36 @@ class SQLAnalyst:
 Existing graph, nodes, validator, executor, introspector, and tool behaviour are
 unchanged apart from the import path move.
 
+## CLI (`askyourdb/cli.py`)
+
+Standard library only (`argparse`, `readline` when available); no new dependencies.
+Console script `askyourdb = "askyourdb.cli:main"`.
+
+Usage:
+
+```
+askyourdb [--config PATH] [ask QUESTION [--json] [--rows]]
+askyourdb [--config PATH] repl
+```
+
+- No subcommand → REPL (same as `repl`).
+- **Config resolution:** `--config PATH` → `AnalystConfig.from_toml(PATH)`;
+  otherwise `AnalystConfig.from_env()`. The CLI does not load `.env` files
+  (users `source .env`; `.env.example` uses `export` lines).
+- **`ask`:** runs one question on a fresh thread and prints:
+  the answer, the SQL used, row count, and caveats (if any). `--rows` also prints
+  the returned rows as a plain aligned text table. `--json` prints the full result
+  dict as JSON instead (rows included) for scripting.
+- **REPL:** one `SQLAnalyst` and one `thread_id` for the whole session, so follow-up
+  questions keep context. Prompt `askyourdb> `; each answer printed like `ask`
+  (with rows). Blank lines are ignored; `exit`, `quit`, or Ctrl-D ends the session;
+  Ctrl-C cancels the current input line without exiting. Line editing/history via
+  `readline` when importable.
+- **Exit codes:** `0` success; `1` query workflow failed (error message printed);
+  `2` configuration error (`ConfigError` message printed to stderr, no traceback).
+  In the REPL a failed question prints the error and continues.
+- The engine is always closed on exit (`with SQLAnalyst(...)`).
+
 ## Packaging (`pyproject.toml`)
 
 - `name = "askyourdb"`, real description, build backend (hatchling) packaging the
@@ -168,12 +210,13 @@ unchanged apart from the import path move.
   - `ollama` → `langchain-ollama`
   - `all` → all of the above
 - Dev group adds `python-dotenv` (used by the demo) and the extras needed by tests.
+- `[project.scripts] askyourdb = "askyourdb.cli:main"`.
 - Coverage config `--cov=askyourdb`, threshold stays at 90%.
 
 ## Docs
 
-- `README.md`: what it is, install per provider, quickstart (code / TOML / env),
-  config reference, BYOK notes (keys stay local, `SecretStr`, read-only DB user
+- `README.md`: what it is, install per provider, CLI quickstart (env / TOML,
+  `ask`, REPL), short "use from Python" section, config reference, BYOK notes (keys stay local, `SecretStr`, read-only DB user
   recommended), running the school demo.
 - `.env.example` updated to the `ASKYOURDB_*` variables.
 - `askyourdb.example.toml` sample config.
@@ -189,4 +232,9 @@ unchanged apart from the import path move.
   assert the SQL prompt no longer contains examples.
 - `tests/test_analyst.py`: end-to-end `SQLAnalyst` on the existing SQLite fixture
   with fake LLMs; `ask`, `as_tool`, context-manager close.
+- `tests/test_cli.py`: argument parsing; config from `--config` vs env; `ask`
+  text, `--rows` and `--json` output; exit codes 0/1/2; REPL loop driven by
+  patched `input` (multiple questions share one thread_id, blank lines skipped,
+  `exit`/EOF end the session, a failed question does not end the session);
+  engine closed on exit. `SQLAnalyst` is stubbed.
 - All existing tests pass with updated imports; coverage ≥ 90%.
