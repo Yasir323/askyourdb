@@ -4,10 +4,10 @@ from sqlalchemy.dialects.postgresql import dialect as postgres_dialect
 from sqlalchemy.schema import UniqueConstraint as SARealUniqueConstraint
 from langchain_core.runnables import RunnableLambda
 
-import src.models as models
-import src.schema_intropection as introspection_module
-from src.data_models import Column, Table
-from src.schema_intropection import SchemaIntrospector
+import askyourdb.models as models
+import askyourdb.schema_intropection as introspection_module
+from askyourdb.data_models import Column, Table
+from askyourdb.schema_intropection import SchemaIntrospector
 
 
 def test_render_schema_uses_table_rendering():

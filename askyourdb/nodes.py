@@ -1,5 +1,5 @@
-from src.states import AnalystState
-from src.sql_validator import SqlValidator
+from askyourdb.states import AnalystState
+from askyourdb.sql_validator import SqlValidator
 
 
 def generate_sql_node(state: AnalystState, model) -> AnalystState:

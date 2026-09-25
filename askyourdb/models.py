@@ -4,7 +4,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.prompts import ChatPromptTemplate
 from sqlalchemy import Table
 
-from src.data_models import ResultSummary, SQLQuery, SQLSemanticValidation
+from askyourdb.data_models import ResultSummary, SQLQuery, SQLSemanticValidation
 
 # -------------------- GENERATOR MODEL -------------------- #
 

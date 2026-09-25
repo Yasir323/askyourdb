@@ -1,6 +1,6 @@
-from src.data_models import ResultSummary, SQLQuery
-from src.graph import build_sql_graph
-from src.nodes import (
+from askyourdb.data_models import ResultSummary, SQLQuery
+from askyourdb.graph import build_sql_graph
+from askyourdb.nodes import (
     execute_sql_node,
     generate_sql_node,
     route_after_semantic_validation,

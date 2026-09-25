@@ -1,7 +1,7 @@
 from langgraph.graph import END, START, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 
-from src.nodes import (
+from askyourdb.nodes import (
     execute_sql_node,
     generate_sql_node,
     route_after_execution,
@@ -12,7 +12,7 @@ from src.nodes import (
     summarize_results_node,
     validate_sql_node
 )
-from src.states import AnalystState
+from askyourdb.states import AnalystState
 
 
 def build_sql_graph(

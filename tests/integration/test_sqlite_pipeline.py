@@ -1,13 +1,13 @@
 from langchain_core.runnables import RunnableLambda
 from sqlalchemy import create_engine, text
 
-import src.models as models
-from src.data_models import ResultSummary, SQLQuery
-from src.executor import QueryExecutor
-from src.graph import build_sql_graph
-from src.schema_intropection import SchemaIntrospector
-from src.sql_validator import SqlValidator
-from src.models import render_schema
+import askyourdb.models as models
+from askyourdb.data_models import ResultSummary, SQLQuery
+from askyourdb.executor import QueryExecutor
+from askyourdb.graph import build_sql_graph
+from askyourdb.schema_intropection import SchemaIntrospector
+from askyourdb.sql_validator import SqlValidator
+from askyourdb.models import render_schema
 
 
 class FakeChatModel:
@@ -104,7 +104,7 @@ def test_sqlite_database_to_validated_query(monkeypatch, tmp_path):
     fake_model = FakeChatModel(expected_query)
     monkeypatch.setattr(models, "init_chat_model", lambda *args, **kwargs: fake_model)
 
-    from src.models import build_sql_generator
+    from askyourdb.models import build_sql_generator
 
     generator = build_sql_generator(schema_text=schema_text, dialect="SQLite")
     validator = SqlValidator(schema=schema, dialect="sqlite")

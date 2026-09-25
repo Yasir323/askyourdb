@@ -2,7 +2,7 @@ from sqlalchemy import Table
 import sqlglot
 from sqlglot import exp
 
-from src.data_models import SQLValidatorResult
+from askyourdb.data_models import SQLValidatorResult
 
 DEFAULT_ROW_LIMIT = 100
 MAX_ROW_LIMIT = 1000

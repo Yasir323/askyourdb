@@ -1,5 +1,5 @@
-from src.data_models import ResultSummary, SQLQuery
-from src.tools import build_query_database_tool
+from askyourdb.data_models import ResultSummary, SQLQuery
+from askyourdb.tools import build_query_database_tool
 
 
 class FakeGraph:

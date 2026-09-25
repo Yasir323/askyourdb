@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **sql-summarizer** (462 symbols, 755 relationships, 2 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **askyourdb** (490 symbols, 762 relationships, 2 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -24,10 +24,10 @@ This project is indexed by GitNexus as **sql-summarizer** (462 symbols, 755 rela
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/sql-summarizer/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/sql-summarizer/clusters` | All functional areas |
-| `gitnexus://repo/sql-summarizer/processes` | All execution flows |
-| `gitnexus://repo/sql-summarizer/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/askyourdb/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/askyourdb/clusters` | All functional areas |
+| `gitnexus://repo/askyourdb/processes` | All execution flows |
+| `gitnexus://repo/askyourdb/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 

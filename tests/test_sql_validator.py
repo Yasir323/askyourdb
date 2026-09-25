@@ -1,6 +1,6 @@
 import pytest
 
-from src.sql_validator import MAX_ROW_LIMIT
+from askyourdb.sql_validator import MAX_ROW_LIMIT
 
 
 def test_normalizes_postgresql_dialect(validator):

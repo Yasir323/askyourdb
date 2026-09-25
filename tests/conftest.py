@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy import Integer, Numeric, Text
 
-from src.data_models import Column, Table
-from src.sql_validator import SqlValidator
+from askyourdb.data_models import Column, Table
+from askyourdb.sql_validator import SqlValidator
 
 
 @pytest.fixture

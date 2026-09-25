@@ -1,4 +1,4 @@
-from src.observability import configure_langsmith
+from askyourdb.observability import configure_langsmith
 
 
 def test_langsmith_tracing_requires_enabled_flag_and_api_key(monkeypatch):

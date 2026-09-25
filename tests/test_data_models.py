@@ -1,6 +1,6 @@
 from sqlalchemy import Integer, Text
 
-from src.data_models import (
+from askyourdb.data_models import (
     CheckConstraint,
     Column,
     PrimaryKey,

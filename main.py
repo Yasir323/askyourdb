@@ -3,19 +3,19 @@ import warnings
 
 from dotenv import load_dotenv
 
-from src.executor import QueryExecutor
-from src.graph import build_sql_graph
-from src.data_models import SQLValidatorResult
-from src.sql_validator import SqlValidator
-from src.models import (
+from askyourdb.executor import QueryExecutor
+from askyourdb.graph import build_sql_graph
+from askyourdb.data_models import SQLValidatorResult
+from askyourdb.sql_validator import SqlValidator
+from askyourdb.models import (
     build_result_summarizer,
     build_sql_generator,
     build_sql_semantic_validator,
     render_schema,
 )
-from src.schema_intropection import SchemaIntrospector
-from src.tools import build_query_database_tool
-from src.observability import configure_langsmith
+from askyourdb.schema_intropection import SchemaIntrospector
+from askyourdb.tools import build_query_database_tool
+from askyourdb.observability import configure_langsmith
 
 warnings.filterwarnings("ignore")
 DEFAULT_DSN = "postgresql+psycopg://school:school@localhost:5432/school_db"

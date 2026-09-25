@@ -4,7 +4,7 @@ from sqlalchemy import ForeignKeyConstraint as SAForeignKeyConstraint
 from sqlalchemy import PrimaryKeyConstraint as SAPrimaryKeyConstraint
 from sqlalchemy import UniqueConstraint as SAUniqueConstraint
 
-from src.data_models import CheckConstraint, Column, PrimaryKey, Relation, Table, UniqueConstraint
+from askyourdb.data_models import CheckConstraint, Column, PrimaryKey, Relation, Table, UniqueConstraint
 
 
 class SchemaIntrospector:
