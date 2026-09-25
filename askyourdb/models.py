@@ -205,7 +205,8 @@ def build_result_summarizer(llm_config: LLMConfig):
             "human",
             "Question:\n{question}\n\n"
             "SQL used:\n{sql}\n\n"
-            "Rows returned:\n{rows}",
+            "Rows returned:\n{rows}"
+            "{row_note}",
         ),
     ])
     model = build_llm(llm_config)

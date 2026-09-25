@@ -1,5 +1,5 @@
 from dataclasses import field
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from pydantic import BaseModel, Field
 from pydantic.dataclasses import dataclass
@@ -16,6 +16,9 @@ class SQLValidatorResult(TypedDict):
     is_valid: bool
     error_message: list[str] = field(default_factory=list)
     sql_query: SQLQuery | None
+    #: The LIMIT askyourdb injected or capped to; None when the query's own
+    #: limit (or a single-row aggregate) was kept. Only set on success.
+    row_limit: NotRequired[int | None]
 
 
 class SQLSemanticValidation(BaseModel):

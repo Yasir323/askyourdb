@@ -154,3 +154,33 @@ def test_non_constant_or_percent_limit_is_rejected(validator, sql):
 
     assert result["is_valid"] is False
     assert any("LIMIT" in message for message in result["error_message"])
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT COUNT(*) AS n FROM students",
+    "SELECT COUNT(*), MAX(student_id) FROM students WHERE student_id > 3",
+])
+def test_single_row_aggregate_gets_no_limit(validator, sql):
+    result = validator.validate(sql)
+
+    assert result["is_valid"] is True
+    assert "LIMIT" not in result["sql_query"]
+    assert result["row_limit"] is None
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT first_name, COUNT(*) FROM students GROUP BY first_name",
+    "SELECT COUNT(*) OVER () FROM students",
+])
+def test_multi_row_aggregates_still_get_a_limit(validator, sql):
+    result = validator.validate(sql)
+
+    assert result["sql_query"].endswith("LIMIT 100")
+    assert result["row_limit"] == 100
+
+
+def test_row_limit_reports_the_limit_askyourdb_imposed(validator):
+    assert validator.validate("SELECT student_id FROM students")["row_limit"] == 100
+    assert validator.validate(
+        "SELECT student_id FROM students LIMIT 99999")["row_limit"] == MAX_ROW_LIMIT
+    assert validator.validate("SELECT student_id FROM students LIMIT 5")["row_limit"] is None

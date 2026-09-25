@@ -23,6 +23,7 @@ def build_query_database_tool(
                 "attempts": 0,
                 "max_attempts": max_attempts,
                 "rows": None,
+                "row_limit": None,
                 "execution_error": None,
                 "summary": None,
                 "summary_error": None,
@@ -40,6 +41,11 @@ def build_query_database_tool(
             or final_state.get("error_feedback")
         )
 
+        rows = final_state.get("rows") or []
+        row_limit = final_state.get("row_limit")
+        # Only a limit askyourdb imposed counts; "top 5" asked for 5 rows.
+        truncated = row_limit is not None and len(rows) >= row_limit
+
         if summary is not None:
             return {
                 "success": True,
@@ -47,17 +53,19 @@ def build_query_database_tool(
                 "row_count": summary.row_count,
                 "sql_used": summary.sql_used,
                 "caveats": summary.caveats,
-                "rows": final_state.get("rows") or [],
+                "rows": rows,
+                "truncated": truncated,
                 "error": None,
             }
 
         return {
             "success": False,
             "answer": None,
-            "row_count": len(final_state.get("rows") or []),
+            "row_count": len(rows),
             "sql_used": query.sql if query else None,
             "caveats": [],
-            "rows": final_state.get("rows") or [],
+            "rows": rows,
+            "truncated": truncated,
             "error": error or "Query workflow failed without an error message.",
         }
 

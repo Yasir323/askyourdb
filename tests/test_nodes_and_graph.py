@@ -418,3 +418,27 @@ def test_execute_sql_node_reports_only_the_database_message():
     assert result["execution_error"] == (
         'SQL execution failed: invalid input value for enum invoice_status: "pending"'
     )
+
+
+def test_validate_sql_node_records_the_imposed_row_limit():
+    validator = FakeStaticValidator({
+        "is_valid": True,
+        "error_message": [],
+        "sql_query": "SELECT student_id FROM students LIMIT 100",
+        "row_limit": 100,
+    })
+
+    result = validate_sql_node(state(sql_query=query()), validator)
+
+    assert result["row_limit"] == 100
+
+
+def test_summarizer_is_told_when_the_row_limit_cut_the_result():
+    rows = [{"student_id": 1}, {"student_id": 2}]
+    cut, whole = FakeSummarizer(), FakeSummarizer()
+
+    summarize_results_node(state(sql_query=query(), rows=rows, row_limit=2), cut)
+    summarize_results_node(state(sql_query=query(), rows=rows, row_limit=100), whole)
+
+    assert "first 2 rows" in cut.inputs[0]["row_note"]
+    assert whole.inputs[0]["row_note"] == ""

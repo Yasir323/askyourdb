@@ -12,6 +12,7 @@ class AnalystState(TypedDict):
     attempts: int
     max_attempts: int
     rows: list[dict] | None
+    row_limit: int | None
     execution_error: str | None
     summary: ResultSummary | None
     summary_error: str | None

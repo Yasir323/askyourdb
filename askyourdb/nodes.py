@@ -33,6 +33,7 @@ def validate_sql_node(state: AnalystState, validator: SqlValidator) -> AnalystSt
         return {
             **state,
             "sql_query": updated_query,
+            "row_limit": result.get("row_limit"),
             "error_feedback": None
         }
     else:
@@ -122,6 +123,17 @@ def route_after_execution(state: AnalystState) -> str:
     return "retry"
 
 
+def _row_limit_note(state: AnalystState) -> str:
+    row_limit = state.get("row_limit")
+    if row_limit is None or len(state["rows"] or []) < row_limit:
+        return ""
+    return (
+        f"\n\nNote: askyourdb returned only the first {row_limit} rows; more rows "
+        "may exist. Do not describe these rows as the complete result, and say "
+        "so in caveats."
+    )
+
+
 def summarize_results_node(state: AnalystState, summarizer) -> dict:
     summary_attempts = state.get("summary_attempts", 0) + 1
     try:
@@ -129,6 +141,7 @@ def summarize_results_node(state: AnalystState, summarizer) -> dict:
             "question": state["question"],
             "sql": state["sql_query"].sql,
             "rows": state["rows"],
+            "row_note": _row_limit_note(state),
         })
 
         return {

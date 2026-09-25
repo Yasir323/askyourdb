@@ -14,6 +14,19 @@ def sqlglot_dialect(dialect: str) -> str:
     return {"postgresql": "postgres"}.get(dialect.lower(), dialect.lower())
 
 
+def _returns_single_row(parsed: exp.Expression) -> bool:
+    """True for e.g. SELECT COUNT(*) FROM t: aggregates only, no GROUP BY."""
+    return (
+        isinstance(parsed, exp.Select)
+        and not parsed.args.get("group")
+        and bool(parsed.expressions)
+        and all(
+            e.find(exp.AggFunc) is not None and e.find(exp.Window) is None
+            for e in parsed.expressions
+        )
+    )
+
+
 class SqlValidator:
     def __init__(self, schema: dict[str, Table], dialect: str):
         self.schema = schema
@@ -91,7 +104,7 @@ class SqlValidator:
 
         # 5. Enforce a LIMIT — inject one if missing, cap it if excessive.
         try:
-            sql = self._enforce_limit(parsed)
+            sql, row_limit = self._enforce_limit(parsed)
         except ValueError as e:
             return SQLValidatorResult(
                 is_valid=False,
@@ -102,14 +115,18 @@ class SqlValidator:
         return SQLValidatorResult(
             is_valid=True,
             error_message=[],
-            sql_query=sql
+            sql_query=sql,
+            row_limit=row_limit,
         )
 
-    def _enforce_limit(self, parsed: exp.Expression) -> str:
+    def _enforce_limit(self, parsed: exp.Expression) -> tuple[str, int | None]:
+        """Return the SQL and the row limit askyourdb imposed (None if it didn't)."""
         existing = parsed.args.get("limit")
         if existing is None:
+            if _returns_single_row(parsed):
+                return parsed.sql(dialect=self.dialect), None
             parsed.set("limit", exp.Limit(expression=exp.Literal.number(DEFAULT_ROW_LIMIT)))
-            return parsed.sql(dialect=self.dialect)
+            return parsed.sql(dialect=self.dialect), DEFAULT_ROW_LIMIT
 
         # Postgres-style "FETCH FIRST n ROWS ONLY" parses as exp.Fetch.
         if isinstance(existing, exp.Fetch):
@@ -121,12 +138,15 @@ class SqlValidator:
             key = "expression"
 
         count = existing.args.get(key)
+        row_limit = None
         if count is not None:  # "FETCH FIRST ROWS ONLY" means one row
             n = self._constant_row_count(count)
             if n is None:
                 raise ValueError("LIMIT must be a constant integer row count")
-            existing.set(key, exp.Literal.number(min(n, MAX_ROW_LIMIT)))
-        return parsed.sql(dialect=self.dialect)
+            if n > MAX_ROW_LIMIT:
+                row_limit = n = MAX_ROW_LIMIT
+            existing.set(key, exp.Literal.number(n))
+        return parsed.sql(dialect=self.dialect), row_limit
 
     @staticmethod
     def _constant_row_count(expression: exp.Expression) -> int | None:

@@ -275,3 +275,19 @@ def test_schema_introspector_keeps_enum_values(monkeypatch):
     rendered = models.render_schema(introspector.get_schema())
 
     assert "status invoice_status NOT NULL /* one of: 'draft', 'issued', 'paid' */," in rendered
+
+
+def test_result_summarizer_prompt_includes_the_row_note(monkeypatch):
+    seen = []
+
+    class RecordingChatModel:
+        def with_structured_output(self, output_type):
+            return RunnableLambda(lambda prompt: seen.append(prompt.to_string()) or output_type)
+
+    monkeypatch.setattr(models, "init_chat_model", lambda *a, **k: RecordingChatModel())
+
+    models.build_result_summarizer(LLMConfig(model="openai:gpt-5")).invoke(
+        {"question": "q", "sql": "SELECT 1", "rows": [], "row_note": "ROW-NOTE"}
+    )
+
+    assert "ROW-NOTE" in seen[0]
