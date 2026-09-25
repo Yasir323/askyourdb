@@ -71,7 +71,9 @@ askyourdb --config askyourdb.toml ask "How many products are out of stock?"
 | `ASKYOURDB_SUMMARY_MODEL`    | `models.summarizer.model`         | the generator settings                             |
 | `ASKYOURDB_SUMMARY_API_KEY`  | `models.summarizer.api_key`       | see below                                          |
 
-Each model table in TOML also accepts `temperature` (default `0.0`).
+Each model table in TOML also accepts `temperature`. By default none is sent and the
+provider's default applies; set `temperature = 0.0` for more repeatable SQL on models
+that allow it.
 
 - When `--config` is given, only that file is read. Otherwise the `ASKYOURDB_*`
   environment variables are used. askyourdb does not read `.env` files itself;

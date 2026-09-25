@@ -55,7 +55,7 @@ def test_build_llm_passes_api_key_only_when_set(monkeypatch):
     models.build_llm(LLMConfig(model="openai:gpt-5", api_key="sk-1", temperature=0.2))
     models.build_llm(LLMConfig(model="openai:gpt-5"))
 
-    assert calls == [{"temperature": 0.2, "api_key": "sk-1"}, {"temperature": 0.0}]
+    assert calls == [{"temperature": 0.2, "api_key": "sk-1"}, {}]
 
 
 def test_build_llm_missing_provider_package_hints_extra(monkeypatch):

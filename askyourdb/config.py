@@ -54,7 +54,8 @@ class _Model(BaseModel):
 class LLMConfig(_Model):
     model: str
     api_key: SecretStr | None = None
-    temperature: float = 0.0
+    # None leaves sampling to the provider; some models reject any override.
+    temperature: float | None = None
 
     @field_validator("model")
     @classmethod

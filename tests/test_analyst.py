@@ -90,9 +90,9 @@ def test_each_stage_uses_its_own_model_config(sqlite_dsn, fake_llm):
         pass
 
     assert fake_llm.calls == [
-        ("anthropic:claude-sonnet-5", {"temperature": 0.0, "api_key": "gen-key"}),
-        ("anthropic:claude-sonnet-5", {"temperature": 0.0, "api_key": "gen-key"}),
-        ("groq:llama-3.3-70b", {"temperature": 0.0, "api_key": "sum-key"}),
+        ("anthropic:claude-sonnet-5", {"api_key": "gen-key"}),
+        ("anthropic:claude-sonnet-5", {"api_key": "gen-key"}),
+        ("groq:llama-3.3-70b", {"api_key": "sum-key"}),
     ]
 
 

@@ -72,7 +72,7 @@ Pydantic v2 models:
 class LLMConfig(BaseModel):
     model: str                      # "provider:model", e.g. "openai:gpt-5"
     api_key: SecretStr | None = None
-    temperature: float = 0.0
+    temperature: float | None = None   # None: provider default
 
 class ModelsConfig(BaseModel):
     generator: LLMConfig
@@ -126,7 +126,7 @@ whose message names the offending field and the env var / TOML key to set. Pydan
 `askyourdb/config.py` (or a small helper in `models.py`) provides
 `build_llm(cfg: LLMConfig) -> BaseChatModel`:
 
-- Calls `init_chat_model(cfg.model, temperature=cfg.temperature, **key_kwargs)`,
+- Calls `init_chat_model(cfg.model, **kwargs)`, passing `temperature` only when set,
   where `key_kwargs = {"api_key": secret}` only when `api_key` is set.
 - If `init_chat_model` raises `ImportError` because the provider integration package
   is missing, re-raise as `ConfigError` with the install hint
