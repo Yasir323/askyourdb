@@ -162,3 +162,41 @@ def test_ask_with_thread_id_keeps_its_checkpoints(sqlite_dsn, fake_llm):
         analyst.ask("Who are the people?", thread_id="mine")
 
         assert stored_threads(analyst) == {"mine"}
+
+
+def test_ask_reports_each_step_as_it_starts(sqlite_dsn, fake_llm):
+    events = []
+
+    with SQLAnalyst(make_config(sqlite_dsn)) as analyst:
+        result = analyst.ask("Who are the people?", on_progress=events.append)
+
+    assert result["success"] is True
+    assert [e.step for e in events] == [
+        "generate_sql", "validate_sql", "semantic_validate_sql",
+        "execute_sql", "summarize_results",
+    ]
+    assert events[0].attempt == 1 and events[0].retry_reason is None
+
+
+def test_ask_reports_retries_with_their_reason(sqlite_dsn, fake_llm):
+    bad = SQLQuery(sql="SELECT name FROM ghosts", reasoning="r", tables_used=["ghosts"])
+    good = fake_llm.responses[SQLQuery]
+    answers = iter([bad, good])
+    fake_llm.responses = {**fake_llm.responses}
+    original = fake_llm.with_structured_output
+
+    def with_structured_output(output_type):
+        if output_type is SQLQuery:
+            return RunnableLambda(lambda prompt: next(answers))
+        return original(output_type)
+
+    fake_llm.with_structured_output = with_structured_output
+    events = []
+
+    with SQLAnalyst(make_config(sqlite_dsn)) as analyst:
+        result = analyst.ask("Who are the people?", on_progress=events.append)
+
+    retry = [e for e in events if e.step == "generate_sql"][1]
+    assert result["success"] is True
+    assert retry.attempt == 2 and retry.max_attempts == 3
+    assert "ghosts" in retry.retry_reason
