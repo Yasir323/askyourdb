@@ -93,13 +93,23 @@ def execute_sql_node(state: AnalystState, executor) -> AnalystState:
             "error_feedback": None
         }
     except Exception as e:
-        message = f"SQL execution failed: {str(e)}"
+        message = f"SQL execution failed: {_database_message(e)}"
         return {
             **state,
             "rows": None,
             "execution_error": message,
             "error_feedback": message
         }
+
+
+def _database_message(error: Exception) -> str:
+    """The driver's own message, first line only.
+
+    SQLAlchemy wraps it with the full SQL and a docs link, and the driver adds
+    a caret diagram; neither helps the user or the model's retry.
+    """
+    text = str(getattr(error, "orig", None) or error).strip()
+    return text.splitlines()[0] if text else type(error).__name__
 
 
 def route_after_execution(state: AnalystState) -> str:

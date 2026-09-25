@@ -399,3 +399,22 @@ def test_checkpointer_keeps_threads_isolated():
     assert first["question"] == "First question"
     assert second["question"] == "Second question"
     assert len(generator.inputs) == 2
+
+def test_execute_sql_node_reports_only_the_database_message():
+    from sqlalchemy.exc import DataError
+
+    class RejectingExecutor:
+        def execute_query(self, sql_query):
+            raise DataError(
+                "SELECT ...", {},
+                Exception('invalid input value for enum invoice_status: "pending"\n'
+                          "LINE 1: ...WHERE i.status IN ('pending')\n        ^"),
+            )
+
+    state = {"sql_query": SQLQuery(sql="SELECT 1", reasoning="r", tables_used=[])}
+
+    result = execute_sql_node(state, RejectingExecutor())
+
+    assert result["execution_error"] == (
+        'SQL execution failed: invalid input value for enum invoice_status: "pending"'
+    )
