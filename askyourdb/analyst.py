@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from langchain_core.tools import StructuredTool
 
-from askyourdb.config import AnalystConfig
+from askyourdb.config import AnalystConfig, ConfigError
 from askyourdb.executor import QueryExecutor
 from askyourdb.graph import build_sql_graph
 from askyourdb.models import (
@@ -24,8 +24,21 @@ class SQLAnalyst:
         self._dialect = config.database.dialect
         self._introspector = SchemaIntrospector(config.database.dsn.get_secret_value())
         try:
-            self._introspector.load_db()
+            try:
+                self._introspector.load_db()
+            except ImportError as error:
+                raise ConfigError(
+                    f"The database driver '{error.name}' is not installed. "
+                    "For PostgreSQL use a 'postgresql+psycopg://' DSN (psycopg is "
+                    "included); for other databases install the driver in your DSN."
+                ) from None
             schema = self._introspector.get_schema()
+            if not schema:
+                raise ConfigError(
+                    "No tables found in the database. Check the DSN (a mistyped "
+                    "SQLite path creates a new empty file) and that the user can "
+                    "see the tables."
+                )
             self._schema_text = render_schema(schema)
             models = config.models
             self._graph = build_sql_graph(

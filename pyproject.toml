@@ -36,6 +36,15 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["askyourdb"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "askyourdb/",
+    "tests/",
+    "README.md",
+    "askyourdb.example.toml",
+    ".env.example",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",

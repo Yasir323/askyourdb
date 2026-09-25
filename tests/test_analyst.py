@@ -127,3 +127,18 @@ def test_construction_failure_closes_engine(sqlite_dsn, monkeypatch):
         SQLAnalyst(make_config(sqlite_dsn))
 
     assert closed == [True]
+
+
+def test_database_without_tables_is_a_config_error(tmp_path, fake_llm):
+    with pytest.raises(ConfigError, match="No tables found"):
+        SQLAnalyst(make_config(f"sqlite:///{tmp_path / 'empty.sqlite'}"))
+
+
+def test_missing_database_driver_is_a_config_error(sqlite_dsn, fake_llm, monkeypatch):
+    def no_driver(self):
+        raise ModuleNotFoundError("No module named 'psycopg2'", name="psycopg2")
+
+    monkeypatch.setattr(SchemaIntrospector, "load_db", no_driver)
+
+    with pytest.raises(ConfigError, match=r"psycopg2.*postgresql\+psycopg://"):
+        SQLAnalyst(make_config(sqlite_dsn))

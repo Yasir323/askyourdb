@@ -75,11 +75,19 @@ class ModelsConfig(_Model):
 
     @property
     def resolved_semantic_validator(self) -> LLMConfig:
-        return self.semantic_validator or self.generator
+        return self._resolve(self.semantic_validator)
 
     @property
     def resolved_summarizer(self) -> LLMConfig:
-        return self.summarizer or self.generator
+        return self._resolve(self.summarizer)
+
+    def _resolve(self, stage: LLMConfig | None) -> LLMConfig:
+        if stage is None:
+            return self.generator
+        # A stage on the generator's provider reuses the generator's key.
+        if stage.api_key is None and stage.provider == self.generator.provider:
+            return stage.model_copy(update={"api_key": self.generator.api_key})
+        return stage
 
 
 class DatabaseConfig(_Model):
@@ -92,9 +100,13 @@ class DatabaseConfig(_Model):
             return self
         try:
             backend = make_url(self.dsn.get_secret_value()).get_backend_name()
-        except ArgumentError:
-            # ArgumentError's message contains the DSN, so don't chain it.
-            raise ValueError("database.dsn is not a valid SQLAlchemy URL") from None
+        except (ArgumentError, ValueError):
+            # These messages contain the DSN (or part of its password), so
+            # don't chain them.
+            raise ValueError(
+                "database.dsn is not a valid SQLAlchemy URL "
+                "(URL-encode special characters such as '@' or ':' in the password)"
+            ) from None
         dialect = DIALECTS_BY_BACKEND.get(backend)
         if dialect is None:
             raise ValueError(

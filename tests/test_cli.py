@@ -211,3 +211,14 @@ def test_repl_ends_on_eof(monkeypatch):
 
     assert cli.main(["repl"]) == 0
     assert FakeAnalyst.instances[0].closed is True
+
+
+def test_unexpected_startup_error_exits_2_without_traceback(capsys):
+    FakeAnalyst.init_error = RuntimeError("boom\nlong detail")
+
+    code = cli.main(["ask", "q"])
+
+    err = capsys.readouterr().err
+    assert code == 2
+    assert "RuntimeError: boom" in err
+    assert "long detail" not in err

@@ -187,3 +187,28 @@ def test_from_env_error_does_not_echo_secrets(monkeypatch):
 def test_from_env_rejects_unknown_override():
     with pytest.raises(ConfigError, match="Unknown from_env override"):
         AnalystConfig.from_env(modle="openai:gpt-5")
+
+
+def test_dsn_with_unencoded_password_chars_does_not_echo_it():
+    with pytest.raises(ValidationError) as error:
+        AnalystConfig(database={"dsn": "postgresql+psycopg://u:p@ss:w0rd@127.0.0.1:1/db"},
+                      models={"generator": {"model": "openai:gpt-5"}})
+
+    assert "w0rd" not in str(error.value)
+    assert "not a valid SQLAlchemy URL" in str(error.value)
+
+
+def test_stage_with_same_provider_inherits_generator_api_key():
+    config = AnalystConfig(
+        database={"dsn": DSN},
+        models={
+            "generator": {"model": "anthropic:claude-sonnet-5", "api_key": "sk-gen"},
+            "semantic_validator": {"model": "anthropic:claude-haiku-4-5"},
+            "summarizer": {"model": "groq:llama-3.3-70b"},
+        },
+    )
+
+    semantic = config.models.resolved_semantic_validator
+    assert semantic.model == "anthropic:claude-haiku-4-5"
+    assert semantic.api_key.get_secret_value() == "sk-gen"
+    assert config.models.resolved_summarizer.api_key is None

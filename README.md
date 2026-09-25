@@ -68,9 +68,9 @@ askyourdb --config askyourdb.toml ask "How many products are out of stock?"
 | `ASKYOURDB_MODEL`            | `models.generator.model`          | required                                           |
 | `ASKYOURDB_API_KEY`          | `models.generator.api_key`        | the provider's own env var                         |
 | `ASKYOURDB_SEMANTIC_MODEL`   | `models.semantic_validator.model` | the generator settings                             |
-| `ASKYOURDB_SEMANTIC_API_KEY` | `models.semantic_validator.api_key` | the generator settings                           |
+| `ASKYOURDB_SEMANTIC_API_KEY` | `models.semantic_validator.api_key` | see below                                        |
 | `ASKYOURDB_SUMMARY_MODEL`    | `models.summarizer.model`         | the generator settings                             |
-| `ASKYOURDB_SUMMARY_API_KEY`  | `models.summarizer.api_key`       | the generator settings                             |
+| `ASKYOURDB_SUMMARY_API_KEY`  | `models.summarizer.api_key`       | see below                                          |
 
 Each model table in TOML also accepts `temperature` (default `0.0`).
 
@@ -78,7 +78,9 @@ Each model table in TOML also accepts `temperature` (default `0.0`).
   environment variables are used. askyourdb does not read `.env` files itself;
   `source` them in your shell first.
 - The semantic validator and summarizer use the generator's model and key unless
-  you set them, so you can point those stages at a cheaper model.
+  you set them, so you can point those stages at a cheaper model. A stage whose
+  model is set but whose key is not reuses the generator's key when both use the
+  same provider; for a different provider it uses that provider's own env var.
 - If `api_key` is not set, nothing is passed to the provider and its SDK reads its
   standard variable (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`,
   `GROQ_API_KEY`, ...). Empty values such as `export ASKYOURDB_API_KEY=` count as unset.
@@ -92,6 +94,13 @@ Your keys stay on your machine and are sent only to the provider you choose. The
 DSN and API keys are held as Pydantic `SecretStr` values, so they are not shown in
 `repr()`, logs or configuration error messages. Keep `askyourdb.toml` and `.env`
 out of version control.
+
+What leaves your machine: the database schema (table and column names, types and
+constraints), your questions, the generated SQL and the returned rows (up to 1000
+per query) are sent to the LLM provider you configured, for SQL generation, review
+and summarization. If you enable LangSmith tracing (`LANGCHAIN_TRACING_V2=true`),
+the same data is also sent to LangSmith. Choose a provider you are allowed to share
+that data with.
 
 Connect with a read-only database user. askyourdb rejects anything other than a
 single read-only query, but a read-only role is the real guarantee.

@@ -49,6 +49,10 @@ def main(argv: list[str] | None = None) -> int:
     except SQLAlchemyError as error:
         print(f"Could not connect to the database: {_first_line(error)}", file=sys.stderr)
         return EXIT_CONFIG_ERROR
+    except Exception as error:
+        print(f"Could not start askyourdb: {type(error).__name__}: {_first_line(error)}",
+              file=sys.stderr)
+        return EXIT_CONFIG_ERROR
 
     with analyst:
         if args.command == "ask":

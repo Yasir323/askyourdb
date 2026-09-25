@@ -1,5 +1,6 @@
 from langchain.chat_models import init_chat_model
 from langchain_core.prompts import ChatPromptTemplate
+from pydantic import ValidationError
 from sqlalchemy import Table
 
 from askyourdb.config import ConfigError, LLMConfig
@@ -36,10 +37,28 @@ def build_llm(config: LLMConfig):
             f"The '{config.provider}' model provider is not installed. "
             f"Run: {hint}\n({error})"
         ) from None
-    except ValueError as error:
+    except Exception as error:
+        # Provider SDKs raise their own errors here (missing credentials, bad
+        # arguments). Keep one line, and never echo the key back.
         raise ConfigError(
-            f"Could not initialize model '{config.model}': {error}"
+            f"Could not initialize model '{config.model}': "
+            f"{_describe_init_error(error, config)}"
         ) from None
+
+
+def _describe_init_error(error: Exception, config: LLMConfig) -> str:
+    if isinstance(error, ValidationError):
+        # str(ValidationError) includes the raw input, which holds the api_key.
+        text = "; ".join(
+            f"{'.'.join(str(part) for part in item['loc'])}: {item['msg']}"
+            for item in error.errors()
+        )
+    else:
+        text = str(error).strip().splitlines()[0] if str(error).strip() else ""
+    text = text or type(error).__name__
+    if config.api_key is not None and config.api_key.get_secret_value():
+        text = text.replace(config.api_key.get_secret_value(), "**********")
+    return text
 
 
 # -------------------- GENERATOR MODEL -------------------- #

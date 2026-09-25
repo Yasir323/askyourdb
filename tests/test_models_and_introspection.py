@@ -203,3 +203,38 @@ def test_server_default_rendering():
     assert SchemaIntrospector._server_default(
         type("Column", (), {"server_default": "CURRENT_DATE"})()
     ) == "DEFAULT CURRENT_DATE"
+
+def test_build_llm_provider_validation_error_does_not_echo_api_key(monkeypatch):
+    from pydantic import BaseModel
+
+    class ProviderArgs(BaseModel):
+        api_key: int
+
+    def invalid(model, **kwargs):
+        ProviderArgs.model_validate(kwargs)
+
+    monkeypatch.setattr(models, "init_chat_model", invalid)
+
+    with pytest.raises(ConfigError) as error:
+        models.build_llm(LLMConfig(model="google_genai:x", api_key="AIzaSECRETKEY123"))
+
+    assert "AIzaSECRETKEY123" not in str(error.value)
+    assert "api_key" in str(error.value)
+
+
+def test_build_llm_wraps_provider_init_errors_and_scrubs_key(monkeypatch):
+    class OpenAIError(Exception):
+        pass
+
+    def missing_credentials(*args, **kwargs):
+        raise OpenAIError("Missing credentials sk-live-123\nset OPENAI_API_KEY")
+
+    monkeypatch.setattr(models, "init_chat_model", missing_credentials)
+
+    with pytest.raises(ConfigError) as error:
+        models.build_llm(LLMConfig(model="openai:gpt-5", api_key="sk-live-123"))
+
+    message = str(error.value)
+    assert "Could not initialize model 'openai:gpt-5'" in message
+    assert "Missing credentials" in message
+    assert "sk-live-123" not in message
