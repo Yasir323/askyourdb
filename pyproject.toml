@@ -1,6 +1,7 @@
 [project]
 name = "askyourdb"
 version = "0.1.0"
+readme = "README.md"
 description = "Ask questions of your SQL database in plain English, using your own LLM API key."
 requires-python = ">=3.13"
 dependencies = [
