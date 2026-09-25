@@ -12,6 +12,7 @@ PROVIDER_EXTRAS = {
     "openai": "openai",
     "google_genai": "google",
     "groq": "groq",
+    "ollama": "ollama",
 }
 
 

@@ -207,6 +207,7 @@ askyourdb [--config PATH] repl
   - `openai` → `langchain-openai`
   - `google` → `langchain-google-genai`
   - `groq` → `langchain-groq`
+  - `ollama` → `langchain-ollama`
   - `all` → all of the above
 - Dev group adds `python-dotenv` (used by the demo) and the extras needed by tests.
 - `[project.scripts] askyourdb = "askyourdb.cli:main"`.

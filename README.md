@@ -21,6 +21,7 @@ pip install "askyourdb[anthropic]"
 | `openai`    | `langchain-openai`       | `openai:gpt-5`                       |
 | `google`    | `langchain-google-genai` | `google_genai:gemini-3.5-flash-lite` |
 | `groq`      | `langchain-groq`         | `groq:llama-3.3-70b-versatile`       |
+| `ollama`    | `langchain-ollama`       | `ollama:llama3`                      |
 | `all`       | all of the above         |                                      |
 
 Models are written as `provider:model` and passed to LangChain's
