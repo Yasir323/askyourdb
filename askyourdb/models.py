@@ -1,10 +1,46 @@
-import os
-
 from langchain.chat_models import init_chat_model
 from langchain_core.prompts import ChatPromptTemplate
 from sqlalchemy import Table
 
+from askyourdb.config import ConfigError, LLMConfig
 from askyourdb.data_models import ResultSummary, SQLQuery, SQLSemanticValidation
+
+# init_chat_model provider name -> askyourdb pip extra that installs it.
+PROVIDER_EXTRAS = {
+    "anthropic": "anthropic",
+    "openai": "openai",
+    "google_genai": "google",
+    "groq": "groq",
+    "ollama": "ollama",
+}
+
+
+def build_llm(config: LLMConfig):
+    """Create the chat model for one pipeline stage from the user's config.
+
+    The key is only passed when configured; otherwise the provider SDK reads its
+    standard environment variable (ANTHROPIC_API_KEY, OPENAI_API_KEY, ...).
+    """
+    kwargs = {"temperature": config.temperature}
+    if config.api_key is not None:
+        kwargs["api_key"] = config.api_key.get_secret_value()
+    try:
+        return init_chat_model(config.model, **kwargs)
+    except ImportError as error:
+        extra = PROVIDER_EXTRAS.get(config.provider)
+        hint = (
+            f'pip install "askyourdb[{extra}]"' if extra
+            else f"install the LangChain integration package for '{config.provider}'"
+        )
+        raise ConfigError(
+            f"The '{config.provider}' model provider is not installed. "
+            f"Run: {hint}\n({error})"
+        ) from None
+    except ValueError as error:
+        raise ConfigError(
+            f"Could not initialize model '{config.model}': {error}"
+        ) from None
+
 
 # -------------------- GENERATOR MODEL -------------------- #
 
@@ -23,26 +59,6 @@ Rules:
 
 Schema:
 {schema}
-
-Examples:
-{few_shot_examples}
-"""
-FEW_SHOT_EXAMPLES = """\
-Q: How many students are in each grade level?
-A: SELECT gl.label, COUNT(*) AS student_count
-   FROM students s
-   JOIN class_sections cs ON cs.class_section_id = s.current_class_section_id
-   JOIN grade_levels gl ON gl.grade_level_id = cs.grade_level_id
-   GROUP BY gl.label, gl.level_number
-   ORDER BY gl.level_number
-   LIMIT 100
-
-Q: Which teachers have no mentor assigned?
-A: SELECT first_name, last_name, employee_no
-   FROM teachers
-   WHERE mentor_teacher_id IS NULL
-   ORDER BY last_name
-   LIMIT 100
 """
 
 
@@ -51,12 +67,11 @@ def render_schema(schema: dict[str, Table]) -> str:
     return "\n\n".join(str(table) for table in schema.values())
 
 
-def build_sql_generator(schema_text: str, dialect: str):
+def build_sql_generator(schema_text: str, dialect: str, llm_config: LLMConfig):
     """Build the prompt -> model -> SQLQuery chain.
 
-    The schema, dialect and examples are the same for every question, so they
-    are bound once with .partial(). Only {question} is left to supply at call
-    time.
+    The schema and dialect are the same for every question, so they are bound
+    once with .partial(). Only {question} is left to supply at call time.
     """
     prompt = ChatPromptTemplate.from_messages([
         ("system", SQL_GEN_SYSTEM),
@@ -64,10 +79,8 @@ def build_sql_generator(schema_text: str, dialect: str):
     ]).partial(
         dialect=dialect,
         schema=schema_text,
-        few_shot_examples=FEW_SHOT_EXAMPLES,
     )
-    model = init_chat_model("google_genai:gemini-3.5-flash-lite", temperature=0)
-    return prompt | model.with_structured_output(SQLQuery)
+    return prompt | build_llm(llm_config).with_structured_output(SQLQuery)
 
 
 # -------------------- SEMANTIC VALIDATION MODEL -------------------- #
@@ -130,7 +143,7 @@ Return concise, actionable feedback explaining exactly what should change.
 """
 
 
-def build_sql_semantic_validator():
+def build_sql_semantic_validator(llm_config: LLMConfig):
     prompt = ChatPromptTemplate.from_messages([
         ("system", SEMANTIC_VALIDATION_SYSTEM),
         (
@@ -143,11 +156,7 @@ def build_sql_semantic_validator():
         ),
     ])
 
-    model_name = os.environ.get(
-        "SEMANTIC_MODEL",
-        "google_genai:gemini-3.5-flash-lite",
-    )
-    model = init_chat_model(model_name, temperature=0)
+    model = build_llm(llm_config)
 
     return prompt | model.with_structured_output(SQLSemanticValidation)
 
@@ -168,7 +177,7 @@ Return:
 """
 
 
-def build_result_summarizer():
+def build_result_summarizer(llm_config: LLMConfig):
     prompt = ChatPromptTemplate.from_messages([
         ("system", RESULT_SUMMARY_SYSTEM),
         (
@@ -178,9 +187,5 @@ def build_result_summarizer():
             "Rows returned:\n{rows}",
         ),
     ])
-    model_name = os.environ.get(
-        "SUMMARY_MODEL",
-        "google_genai:gemini-3.5-flash-lite",
-    )
-    model = init_chat_model(model_name, temperature=0)
+    model = build_llm(llm_config)
     return prompt | model.with_structured_output(ResultSummary)

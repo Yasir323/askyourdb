@@ -104,9 +104,13 @@ def test_sqlite_database_to_validated_query(monkeypatch, tmp_path):
     fake_model = FakeChatModel(expected_query)
     monkeypatch.setattr(models, "init_chat_model", lambda *args, **kwargs: fake_model)
 
+    from askyourdb.config import LLMConfig
     from askyourdb.models import build_sql_generator
 
-    generator = build_sql_generator(schema_text=schema_text, dialect="SQLite")
+    generator = build_sql_generator(
+        schema_text=schema_text, dialect="SQLite",
+        llm_config=LLMConfig(model="google_genai:gemini-3.5-flash-lite"),
+    )
     validator = SqlValidator(schema=schema, dialect="sqlite")
     graph = build_sql_graph(
         generator=generator,

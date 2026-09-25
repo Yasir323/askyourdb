@@ -1,3 +1,4 @@
+import pytest
 from sqlalchemy import CheckConstraint as SARealCheckConstraint
 from sqlalchemy import Integer, MetaData
 from sqlalchemy.dialects.postgresql import dialect as postgres_dialect
@@ -6,6 +7,7 @@ from langchain_core.runnables import RunnableLambda
 
 import askyourdb.models as models
 import askyourdb.schema_intropection as introspection_module
+from askyourdb.config import ConfigError, LLMConfig
 from askyourdb.data_models import Column, Table
 from askyourdb.schema_intropection import SchemaIntrospector
 
@@ -27,13 +29,78 @@ class FakeChatModel:
 
 
 def test_model_builders_create_structured_chains(monkeypatch):
-    monkeypatch.setattr(models, "init_chat_model", lambda *args, **kwargs: FakeChatModel())
+    calls = []
+    monkeypatch.setattr(
+        models, "init_chat_model",
+        lambda *args, **kwargs: calls.append((args, kwargs)) or FakeChatModel(),
+    )
 
-    generator = models.build_sql_generator("students (student_id INTEGER)", "PostgreSQL")
-    semantic = models.build_sql_semantic_validator()
+    generator = models.build_sql_generator(
+        "students (student_id INTEGER)", "PostgreSQL", LLMConfig(model="openai:gpt-5"),
+    )
+    semantic = models.build_sql_semantic_validator(LLMConfig(model="groq:llama-3.3-70b"))
+    summarizer = models.build_result_summarizer(LLMConfig(model="ollama:llama3"))
 
-    assert generator is not None
-    assert semantic is not None
+    assert generator is not None and semantic is not None and summarizer is not None
+    assert [args[0] for args, _ in calls] == [
+        "openai:gpt-5", "groq:llama-3.3-70b", "ollama:llama3",
+    ]
+
+
+def test_build_llm_passes_api_key_only_when_set(monkeypatch):
+    calls = []
+    monkeypatch.setattr(models, "init_chat_model",
+                        lambda model, **kwargs: calls.append(kwargs) or FakeChatModel())
+
+    models.build_llm(LLMConfig(model="openai:gpt-5", api_key="sk-1", temperature=0.2))
+    models.build_llm(LLMConfig(model="openai:gpt-5"))
+
+    assert calls == [{"temperature": 0.2, "api_key": "sk-1"}, {"temperature": 0.0}]
+
+
+def test_build_llm_missing_provider_package_hints_extra(monkeypatch):
+    def missing(*args, **kwargs):
+        raise ImportError("Initializing ChatAnthropic requires the langchain-anthropic package.")
+
+    monkeypatch.setattr(models, "init_chat_model", missing)
+
+    with pytest.raises(ConfigError, match=r'pip install "askyourdb\[anthropic\]"'):
+        models.build_llm(LLMConfig(model="anthropic:claude-sonnet-5"))
+
+
+def test_build_llm_google_provider_maps_to_google_extra(monkeypatch):
+    def missing(*args, **kwargs):
+        raise ImportError("no langchain_google_genai")
+
+    monkeypatch.setattr(models, "init_chat_model", missing)
+
+    with pytest.raises(ConfigError, match=r'askyourdb\[google\]'):
+        models.build_llm(LLMConfig(model="google_genai:gemini-3.5-flash-lite"))
+
+
+def test_build_llm_unknown_provider_package_gives_generic_hint(monkeypatch):
+    def missing(*args, **kwargs):
+        raise ImportError("requires the langchain-mistralai package")
+
+    monkeypatch.setattr(models, "init_chat_model", missing)
+
+    with pytest.raises(ConfigError, match="langchain-mistralai"):
+        models.build_llm(LLMConfig(model="mistralai:mistral-large"))
+
+
+def test_build_llm_wraps_provider_value_errors(monkeypatch):
+    def unsupported(*args, **kwargs):
+        raise ValueError("Unable to infer model provider")
+
+    monkeypatch.setattr(models, "init_chat_model", unsupported)
+
+    with pytest.raises(ConfigError, match="Could not initialize model 'fooprov:x'"):
+        models.build_llm(LLMConfig(model="fooprov:x"))
+
+
+def test_sql_prompt_has_no_few_shot_examples():
+    assert "Examples" not in models.SQL_GEN_SYSTEM
+    assert not hasattr(models, "FEW_SHOT_EXAMPLES")
 
 
 class FakeColumn:
