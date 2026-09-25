@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from uuid import uuid4
 
 from langchain_core.tools import StructuredTool
@@ -13,7 +14,7 @@ from askyourdb.models import (
 )
 from askyourdb.schema_intropection import SchemaIntrospector
 from askyourdb.sql_validator import SqlValidator
-from askyourdb.tools import build_query_database_tool
+from askyourdb.tools import ProgressEvent, build_query_database_tool, run_query
 
 
 class SQLAnalyst:
@@ -64,19 +65,31 @@ class SQLAnalyst:
             thread_id=thread_id or f"askyourdb-{uuid4()}",
         )
 
-    def ask(self, question: str, thread_id: str | None = None) -> dict:
+    def ask(
+        self,
+        question: str,
+        thread_id: str | None = None,
+        on_progress: Callable[[ProgressEvent], None] | None = None,
+    ) -> dict:
         """Answer one question.
 
         With no thread_id the question gets a throwaway thread whose checkpoints
         are deleted afterwards, so repeated calls don't accumulate state.
+        on_progress, if given, is called as each pipeline step starts.
         """
         if thread_id is not None:
-            return self.as_tool(thread_id).invoke(question)
+            return self._run(question, thread_id, on_progress)
         thread_id = f"askyourdb-{uuid4()}"
         try:
-            return self.as_tool(thread_id).invoke(question)
+            return self._run(question, thread_id, on_progress)
         finally:
             self._graph.checkpointer.delete_thread(thread_id)
+
+    def _run(self, question, thread_id, on_progress) -> dict:
+        return run_query(
+            self._graph, question, self._schema_text, self._dialect,
+            thread_id=thread_id, on_progress=on_progress,
+        )
 
     def close(self) -> None:
         self._introspector.close()

@@ -18,10 +18,13 @@ PROVIDER_EXTRAS = {
 def build_llm(config: LLMConfig):
     """Create the chat model for one pipeline stage from the user's config.
 
-    The key is only passed when configured; otherwise the provider SDK reads its
-    standard environment variable (ANTHROPIC_API_KEY, OPENAI_API_KEY, ...).
+    The key and temperature are only passed when configured; otherwise the
+    provider SDK reads its standard environment variable (ANTHROPIC_API_KEY,
+    OPENAI_API_KEY, ...) and uses its own sampling defaults.
     """
-    kwargs = {"temperature": config.temperature}
+    kwargs = {}
+    if config.temperature is not None:
+        kwargs["temperature"] = config.temperature
     if config.api_key is not None:
         kwargs["api_key"] = config.api_key.get_secret_value()
     try:
@@ -202,7 +205,8 @@ def build_result_summarizer(llm_config: LLMConfig):
             "human",
             "Question:\n{question}\n\n"
             "SQL used:\n{sql}\n\n"
-            "Rows returned:\n{rows}",
+            "Rows returned:\n{rows}"
+            "{row_note}",
         ),
     ])
     model = build_llm(llm_config)

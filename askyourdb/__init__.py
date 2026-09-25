@@ -6,6 +6,7 @@ from askyourdb.config import (
     LLMConfig,
     ModelsConfig,
 )
+from askyourdb.tools import ProgressEvent
 
 __all__ = [
     "AnalystConfig",
@@ -13,5 +14,6 @@ __all__ = [
     "DatabaseConfig",
     "LLMConfig",
     "ModelsConfig",
+    "ProgressEvent",
     "SQLAnalyst",
 ]

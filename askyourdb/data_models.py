@@ -1,5 +1,5 @@
 from dataclasses import field
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from pydantic import BaseModel, Field
 from pydantic.dataclasses import dataclass
@@ -16,6 +16,9 @@ class SQLValidatorResult(TypedDict):
     is_valid: bool
     error_message: list[str] = field(default_factory=list)
     sql_query: SQLQuery | None
+    #: The LIMIT askyourdb injected or capped to; None when the query's own
+    #: limit (or a single-row aggregate) was kept. Only set on success.
+    row_limit: NotRequired[int | None]
 
 
 class SQLSemanticValidation(BaseModel):
@@ -44,6 +47,9 @@ class Column:
     type_sql: str
     nullable: bool
     default: str = ""
+    #: Allowed values of an enum column. The compiled type is only the enum's
+    #: name, so without these the model has to guess the labels.
+    enum_values: tuple[str, ...] = ()
 
     def __str__(self) -> str:
         parts = [self.name, self.type_sql]
@@ -51,6 +57,8 @@ class Column:
             parts.append("NOT NULL")
         if self.default:
             parts.append(self.default)
+        if self.enum_values:
+            parts.append("/* one of: " + ", ".join(f"'{v}'" for v in self.enum_values) + " */")
         return " ".join(parts)
 
 

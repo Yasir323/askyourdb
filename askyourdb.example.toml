@@ -9,7 +9,7 @@ dsn = "postgresql+psycopg://readonly_user:password@localhost:5432/mydb"
 [models.generator]
 model = "anthropic:claude-sonnet-5"
 # api_key = "sk-ant-..."   # default: ANTHROPIC_API_KEY
-# temperature = 0.0
+# temperature = 0.0   # default: the provider's own; some models reject overrides
 
 # Optional: use different (e.g. cheaper) models for the other stages.
 # Each defaults to the generator settings.

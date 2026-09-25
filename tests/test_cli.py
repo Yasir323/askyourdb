@@ -6,23 +6,37 @@ from sqlalchemy.exc import OperationalError
 
 import askyourdb.cli as cli
 from askyourdb.config import ConfigError
+from askyourdb.tools import ProgressEvent
 
 OK = {
     "success": True, "answer": "Ada owes the most.", "row_count": 1,
     "sql_used": "SELECT name, owed FROM people LIMIT 100",
     "caveats": ["Sample data"], "rows": [{"name": "Ada", "owed": Decimal("12.50")}],
-    "error": None,
+    "truncated": False, "error": None,
+}
+SCALAR = {
+    "success": True, "answer": "There are 500 students in total.", "row_count": 1,
+    "sql_used": "SELECT COUNT(*) AS n FROM students", "caveats": [],
+    "rows": [{"n": 500}], "truncated": False, "error": None,
 }
 FAILED = {
     "success": False, "answer": None, "row_count": 0, "sql_used": "SELECT bad",
-    "caveats": [], "rows": [], "error": "Unknown column 'bad'",
+    "caveats": [], "rows": [], "truncated": False, "error": "Unknown column 'bad'",
 }
+
+
+def table_result(n_rows, truncated=False):
+    rows = [{"id": i, "name": f"p{i}"} for i in range(n_rows)]
+    return {**OK, "answer": f"{n_rows} people.", "row_count": n_rows,
+            "rows": rows, "truncated": truncated}
 
 
 class FakeAnalyst:
     instances = []
     results = []
     init_error = None
+    events = []
+    during_ask = None
 
     def __init__(self, config):
         if FakeAnalyst.init_error:
@@ -32,8 +46,12 @@ class FakeAnalyst:
         self.closed = False
         FakeAnalyst.instances.append(self)
 
-    def ask(self, question, thread_id=None):
+    def ask(self, question, thread_id=None, on_progress=None):
         self.questions.append((question, thread_id))
+        for event in FakeAnalyst.events:
+            on_progress and on_progress(event)
+        if FakeAnalyst.during_ask:
+            FakeAnalyst.during_ask()
         result = FakeAnalyst.results.pop(0)
         if isinstance(result, BaseException):
             raise result
@@ -52,6 +70,7 @@ class FakeAnalyst:
 @pytest.fixture(autouse=True)
 def fake_analyst(monkeypatch):
     FakeAnalyst.instances, FakeAnalyst.results, FakeAnalyst.init_error = [], [], None
+    FakeAnalyst.events, FakeAnalyst.during_ask = [], None
     monkeypatch.setattr(cli, "SQLAnalyst", FakeAnalyst)
     monkeypatch.setenv("ASKYOURDB_DSN", "sqlite:///env.db")
     monkeypatch.setenv("ASKYOURDB_MODEL", "openai:gpt-5")
@@ -72,30 +91,132 @@ def feed_input(monkeypatch, *lines):
     monkeypatch.setattr("builtins.input", fake_input)
 
 
-def test_ask_prints_answer_sql_row_count_and_caveats(capsys):
-    FakeAnalyst.results = [OK]
+def test_ask_scalar_result_prints_only_the_sentence(capsys):
+    FakeAnalyst.results = [SCALAR]
 
-    code = cli.main(["ask", "Who owes the most?"])
+    code = cli.main(["ask", "How many students?"])
 
-    out = capsys.readouterr().out
     assert code == 0
-    assert "Ada owes the most." in out
-    assert "SELECT name, owed FROM people LIMIT 100" in out
-    assert "Rows: 1" in out
-    assert "- Sample data" in out
-    assert "12.50" not in out  # rows only with --rows
-    assert FakeAnalyst.instances[0].questions == [("Who owes the most?", None)]
+    assert capsys.readouterr().out == "There are 500 students in total.\n"
+    assert FakeAnalyst.instances[0].questions == [("How many students?", None)]
     assert FakeAnalyst.instances[0].closed is True
 
 
-def test_ask_rows_flag_prints_table(capsys):
+def test_ask_table_result_prints_sentence_and_table_without_sql(capsys):
     FakeAnalyst.results = [OK]
 
-    cli.main(["ask", "q", "--rows"])
+    cli.main(["ask", "q"])
 
     out = capsys.readouterr().out
+    assert out.startswith("Ada owes the most.\n\n")
     assert "name  owed" in out
     assert "Ada   12.50" in out
+    assert "SELECT" not in out
+    assert "Sample data" not in out
+
+
+def test_verbose_adds_sql_row_count_caveats_and_steps(capsys):
+    FakeAnalyst.results = [OK]
+    FakeAnalyst.events = [
+        ProgressEvent("generate_sql", 1, 3),
+        ProgressEvent("generate_sql", 2, 3, "Unknown tables referenced: ghosts"),
+        ProgressEvent("summarize_results", 1, 2),
+    ]
+
+    cli.main(["ask", "q", "--verbose"])
+
+    out = capsys.readouterr().out
+    assert "SQL:\nSELECT name, owed FROM people LIMIT 100" in out
+    assert "Rows: 1" in out
+    assert "- Sample data" in out
+    assert "Retry 2/3: Unknown tables referenced: ghosts" in out
+    assert "Steps: Writing SQL " in out and "Summarizing " in out
+
+
+def test_verbose_flag_works_before_the_subcommand(capsys):
+    FakeAnalyst.results = [OK]
+
+    cli.main(["--verbose", "ask", "q"])
+
+    assert "SQL:" in capsys.readouterr().out
+
+
+def test_long_tables_are_cut_to_20_rows(capsys):
+    FakeAnalyst.results = [table_result(25)]
+
+    cli.main(["ask", "q"])
+
+    out = capsys.readouterr().out
+    assert "p19" in out and "p20" not in out
+    assert "… 5 more rows (use --json for all)" in out
+
+
+def test_truncated_result_says_so(capsys):
+    FakeAnalyst.results = [table_result(3, truncated=True)]
+
+    cli.main(["ask", "q"])
+
+    assert "Only the first 3 rows were fetched" in capsys.readouterr().out
+
+
+def test_format_rows_rounds_decimals_for_display():
+    table = cli.format_rows([{"avg": Decimal("76.5475000000000000"), "n": 3, "f": 2.0}])
+
+    assert "76.55" in table and "76.547" not in table
+    assert table.splitlines()[-1].split() == ["76.55", "3", "2.00"]
+
+
+def test_library_warnings_are_hidden_unless_verbose(recwarn, caplog):
+    import logging
+    import warnings
+
+    def noisy():
+        warnings.warn("temperature will be ignored", UserWarning)
+        logging.getLogger("google_genai.models").warning("AFC is not recommended")
+
+    FakeAnalyst.during_ask = noisy
+    FakeAnalyst.results = [OK, OK]
+
+    cli.main(["ask", "q"])
+    assert not [w for w in recwarn if "temperature" in str(w.message)]
+    assert "AFC" not in caplog.text
+    assert logging.root.manager.disable == logging.NOTSET  # restored afterwards
+
+    cli.main(["ask", "q", "--verbose"])
+    assert [w for w in recwarn if "temperature" in str(w.message)]
+    assert "AFC" in caplog.text
+
+
+def test_progress_line_draws_steps_and_clears_on_a_terminal():
+    import io
+
+    class Terminal(io.StringIO):
+        def isatty(self):
+            return True
+
+    stream = Terminal()
+    line = cli.ProgressLine(stream)
+    line.start()
+    line.update(ProgressEvent("generate_sql", 1, 3))
+    line.update(ProgressEvent("generate_sql", 2, 3, "status has no value 'pending'"))
+    line.stop()
+
+    text = stream.getvalue()
+    assert "Writing SQL…" in text
+    assert "Rewriting SQL (2/3): status has no value 'pending'" in text
+    assert text.endswith("\r\033[K")
+
+
+def test_progress_line_is_silent_when_not_a_terminal():
+    import io
+
+    stream = io.StringIO()
+    line = cli.ProgressLine(stream)
+    line.start()
+    line.update(ProgressEvent("execute_sql", 1, 3))
+    line.stop()
+
+    assert stream.getvalue() == ""
 
 
 def test_format_rows_handles_empty_and_null():
@@ -111,6 +232,18 @@ def test_ask_json_output(capsys):
     data = json.loads(capsys.readouterr().out)
     assert code == 0
     assert data["rows"] == [{"name": "Ada", "owed": "12.50"}]
+
+
+def test_failed_query_shows_sql_only_when_verbose(capsys):
+    FakeAnalyst.results = [FAILED, FAILED]
+
+    cli.main(["ask", "q"])
+    quiet = capsys.readouterr().err
+    cli.main(["ask", "q", "--verbose"])
+    loud = capsys.readouterr().err
+
+    assert quiet == "Error: Unknown column 'bad'\n"
+    assert "SQL:\nSELECT bad" in loud
 
 
 def test_ask_failed_query_exits_1(capsys):
@@ -247,3 +380,23 @@ def test_ctrl_c_during_startup_exits_130(capsys):
     FakeAnalyst.init_error = KeyboardInterrupt()
 
     assert cli.main(["ask", "q"]) == 130
+
+
+def test_progress_line_keeps_redrawing_the_elapsed_time():
+    import io
+    import time
+
+    class Terminal(io.StringIO):
+        def isatty(self):
+            return True
+
+    stream = Terminal()
+    line = cli.ProgressLine(stream, interval=0.01)
+    line.start()
+    line.update(ProgressEvent("summarize_results", 2, 2))
+    deadline = time.monotonic() + 2
+    while stream.getvalue().count("Summarizing (2/2)…") < 3 and time.monotonic() < deadline:
+        time.sleep(0.01)
+    line.stop()
+
+    assert stream.getvalue().count("Summarizing (2/2)…") >= 3

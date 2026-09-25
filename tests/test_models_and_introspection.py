@@ -55,7 +55,7 @@ def test_build_llm_passes_api_key_only_when_set(monkeypatch):
     models.build_llm(LLMConfig(model="openai:gpt-5", api_key="sk-1", temperature=0.2))
     models.build_llm(LLMConfig(model="openai:gpt-5"))
 
-    assert calls == [{"temperature": 0.2, "api_key": "sk-1"}, {"temperature": 0.0}]
+    assert calls == [{"temperature": 0.2, "api_key": "sk-1"}, {}]
 
 
 def test_build_llm_missing_provider_package_hints_extra(monkeypatch):
@@ -251,3 +251,43 @@ def test_ollama_has_no_askyourdb_extra_yet(monkeypatch):
 
     assert "askyourdb[ollama]" not in str(error.value)
     assert "langchain-ollama" in str(error.value)
+
+
+def test_column_lists_enum_values():
+    column = Column("status", Integer(), "invoice_status", False, "", ("draft", "paid"))
+
+    assert str(column) == "status invoice_status NOT NULL /* one of: 'draft', 'paid' */"
+
+
+def test_schema_introspector_keeps_enum_values(monkeypatch):
+    from sqlalchemy.dialects.postgresql import ENUM
+
+    status = FakeColumn("status")
+    status.type = ENUM("draft", "issued", "paid", name="invoice_status")
+    metadata = FakeMetadata()
+    metadata.tables["students"].columns = [status]
+    monkeypatch.setattr(introspection_module, "create_engine", lambda dsn: FakeEngine())
+    monkeypatch.setattr(introspection_module, "MetaData", lambda: metadata)
+    monkeypatch.setattr(introspection_module, "inspect", lambda value: FakeInspector())
+
+    introspector = SchemaIntrospector("postgresql://test")
+    introspector.load_db()
+    rendered = models.render_schema(introspector.get_schema())
+
+    assert "status invoice_status NOT NULL /* one of: 'draft', 'issued', 'paid' */," in rendered
+
+
+def test_result_summarizer_prompt_includes_the_row_note(monkeypatch):
+    seen = []
+
+    class RecordingChatModel:
+        def with_structured_output(self, output_type):
+            return RunnableLambda(lambda prompt: seen.append(prompt.to_string()) or output_type)
+
+    monkeypatch.setattr(models, "init_chat_model", lambda *a, **k: RecordingChatModel())
+
+    models.build_result_summarizer(LLMConfig(model="openai:gpt-5")).invoke(
+        {"question": "q", "sql": "SELECT 1", "rows": [], "row_note": "ROW-NOTE"}
+    )
+
+    assert "ROW-NOTE" in seen[0]

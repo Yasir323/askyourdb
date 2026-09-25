@@ -72,7 +72,7 @@ Pydantic v2 models:
 class LLMConfig(BaseModel):
     model: str                      # "provider:model", e.g. "openai:gpt-5"
     api_key: SecretStr | None = None
-    temperature: float = 0.0
+    temperature: float | None = None   # None: provider default
 
 class ModelsConfig(BaseModel):
     generator: LLMConfig
@@ -126,7 +126,7 @@ whose message names the offending field and the env var / TOML key to set. Pydan
 `askyourdb/config.py` (or a small helper in `models.py`) provides
 `build_llm(cfg: LLMConfig) -> BaseChatModel`:
 
-- Calls `init_chat_model(cfg.model, temperature=cfg.temperature, **key_kwargs)`,
+- Calls `init_chat_model(cfg.model, **kwargs)`, passing `temperature` only when set,
   where `key_kwargs = {"api_key": secret}` only when `api_key` is set.
 - If `init_chat_model` raises `ImportError` because the provider integration package
   is missing, re-raise as `ConfigError` with the install hint
@@ -173,7 +173,7 @@ Console script `askyourdb = "askyourdb.cli:main"`.
 Usage:
 
 ```
-askyourdb [--config PATH] [ask QUESTION [--json] [--rows]]
+askyourdb [--config PATH] [--verbose] [ask QUESTION [--json] [--verbose]]
 askyourdb [--config PATH] repl
 ```
 
@@ -182,9 +182,14 @@ askyourdb [--config PATH] repl
   otherwise `AnalystConfig.from_env()`. The CLI does not load `.env` files
   (users `source .env`; `.env.example` uses `export` lines).
 - **`ask`:** runs one question on a fresh thread and prints:
-  the answer, the SQL used, row count, and caveats (if any). `--rows` also prints
-  the returned rows as a plain aligned text table. `--json` prints the full result
+  the answer sentence; for anything but a single value, also a table of up to 20
+  rows, and a note when the automatic row limit cut the result off. `--verbose`
+  adds the executed SQL, row count, caveats, retries and per-step timings, and lets
+  provider SDK warnings through (hidden otherwise). `--json` prints the full result
   dict as JSON instead (rows included) for scripting.
+- **Progress:** on a terminal, a single stderr status line shows the running step
+  and elapsed time, fed by `SQLAnalyst.ask(..., on_progress=...)`, and clears itself
+  before the answer prints.
 - **REPL:** one `SQLAnalyst` for the whole session. Each question is answered independently on a throwaway thread whose checkpoints are discarded (the graph only passes the current question to the generator, so a shared thread gave no follow-up context and grew memory without bound). Prompt `askyourdb> `; each answer printed like `ask`
   (with rows). Blank lines are ignored; `exit`, `quit`, or Ctrl-D ends the session;
   Ctrl-C cancels the current input line without exiting. Line editing/history via
@@ -232,7 +237,7 @@ askyourdb [--config PATH] repl
 - `tests/test_analyst.py`: end-to-end `SQLAnalyst` on the existing SQLite fixture
   with fake LLMs; `ask`, `as_tool`, context-manager close.
 - `tests/test_cli.py`: argument parsing; config from `--config` vs env; `ask`
-  text, `--rows` and `--json` output; exit codes 0/1/2; REPL loop driven by
+  text, `--verbose` and `--json` output; exit codes 0/1/2; REPL loop driven by
   patched `input` (multiple questions share one thread_id, blank lines skipped,
   `exit`/EOF end the session, a failed question does not end the session);
   engine closed on exit. `SQLAnalyst` is stubbed.
