@@ -104,3 +104,14 @@ def test_reports_multiple_static_errors(validator):
 
     assert result["is_valid"] is False
     assert len(result["error_message"]) == 2
+
+@pytest.mark.parametrize("dialect", ["SQLite", "sqlite", "MySQL", "PostgreSQL", "postgres"])
+def test_validator_accepts_config_dialect_names(schema, dialect):
+    from askyourdb.sql_validator import SqlValidator
+
+    result = SqlValidator(schema=schema, dialect=dialect).validate(
+        "SELECT student_id FROM students"
+    )
+
+    assert result["is_valid"] is True
+    assert "LIMIT 100" in result["sql_query"]

@@ -13,7 +13,7 @@ class SqlValidator:
         self.schema = schema
         self.dialect = {
             "postgresql": "postgres",
-        }.get(dialect.lower(), dialect)
+        }.get(dialect.lower(), dialect.lower())
         self._tables = {
             name.lower(): {
                 c.name.lower() for c in table.columns
