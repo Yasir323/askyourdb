@@ -47,9 +47,12 @@ docker compose down -v && docker compose up -d
 
 ## Using it from `main.py`
 
-`main.py` reads `SCHOOL_DB_DSN`, falling back to the local container:
+`main.py` loads `.env` and reads the `ASKYOURDB_*` variables. `.env.example` already
+points `ASKYOURDB_DSN` at this container; add your model key:
 
 ```bash
+cp .env.example .env   # set ASKYOURDB_API_KEY
+uv sync --extra google
 uv run python main.py
 ```
 

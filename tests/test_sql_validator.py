@@ -1,6 +1,6 @@
 import pytest
 
-from src.sql_validator import MAX_ROW_LIMIT
+from askyourdb.sql_validator import MAX_ROW_LIMIT
 
 
 def test_normalizes_postgresql_dialect(validator):
@@ -104,3 +104,53 @@ def test_reports_multiple_static_errors(validator):
 
     assert result["is_valid"] is False
     assert len(result["error_message"]) == 2
+
+@pytest.mark.parametrize("dialect", ["SQLite", "sqlite", "MySQL", "PostgreSQL", "postgres"])
+def test_validator_accepts_config_dialect_names(schema, dialect):
+    from askyourdb.sql_validator import SqlValidator
+
+    result = SqlValidator(schema=schema, dialect=dialect).validate(
+        "SELECT student_id FROM students"
+    )
+
+    assert result["is_valid"] is True
+    assert "LIMIT 100" in result["sql_query"]
+
+
+def test_fetch_first_is_capped(validator):
+    result = validator.validate("SELECT student_id FROM students FETCH FIRST 5000 ROWS ONLY")
+
+    assert result["is_valid"] is True
+    assert f"FETCH FIRST {MAX_ROW_LIMIT} ROWS ONLY" in result["sql_query"]
+
+
+def test_fetch_first_without_count_is_kept(validator):
+    result = validator.validate("SELECT student_id FROM students FETCH FIRST ROWS ONLY")
+
+    assert result["is_valid"] is True
+    assert "LIMIT" not in result["sql_query"]
+
+
+def test_constant_limit_expression_is_folded(validator):
+    result = validator.validate("SELECT student_id FROM students LIMIT 10 + 1")
+
+    assert result["is_valid"] is True
+    assert result["sql_query"].endswith("LIMIT 11")
+
+
+def test_constant_limit_expression_over_cap_is_capped(validator):
+    result = validator.validate("SELECT student_id FROM students LIMIT 5000 * 2")
+
+    assert result["sql_query"].endswith(f"LIMIT {MAX_ROW_LIMIT}")
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT student_id FROM students LIMIT (SELECT COUNT(*) FROM students)",
+    "SELECT student_id FROM students FETCH FIRST 50 PERCENT ROWS ONLY",
+    "SELECT student_id FROM students LIMIT 2.5",
+])
+def test_non_constant_or_percent_limit_is_rejected(validator, sql):
+    result = validator.validate(sql)
+
+    assert result["is_valid"] is False
+    assert any("LIMIT" in message for message in result["error_message"])

@@ -1,0 +1,199 @@
+import os
+import tomllib
+from pathlib import Path
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import ArgumentError
+from sqlglot.dialects.dialect import Dialect
+
+from askyourdb.sql_validator import sqlglot_dialect
+
+
+class ConfigError(ValueError):
+    """Raised when askyourdb configuration is missing or invalid."""
+
+
+DIALECTS_BY_BACKEND = {
+    "postgresql": "PostgreSQL",
+    "sqlite": "SQLite",
+    "mysql": "MySQL",
+}
+
+ENV_PREFIX = "ASKYOURDB_"
+
+# from_env key -> path inside the AnalystConfig data. The env var is
+# ENV_PREFIX + key.upper().
+ENV_FIELDS = {
+    "dsn": ("database", "dsn"),
+    "dialect": ("database", "dialect"),
+    "model": ("models", "generator", "model"),
+    "api_key": ("models", "generator", "api_key"),
+    "semantic_model": ("models", "semantic_validator", "model"),
+    "semantic_api_key": ("models", "semantic_validator", "api_key"),
+    "summary_model": ("models", "summarizer", "model"),
+    "summary_api_key": ("models", "summarizer", "api_key"),
+}
+ENV_VAR_BY_FIELD = {
+    ".".join(path): ENV_PREFIX + key.upper() for key, path in ENV_FIELDS.items()
+}
+
+
+class _Model(BaseModel):
+    # Never echo raw input (DSNs, keys) back in validation errors.
+    model_config = ConfigDict(hide_input_in_errors=True)
+
+
+class LLMConfig(_Model):
+    model: str
+    api_key: SecretStr | None = None
+    temperature: float = 0.0
+
+    @field_validator("model")
+    @classmethod
+    def _require_provider_prefix(cls, value: str) -> str:
+        provider, separator, name = value.partition(":")
+        if not (separator and provider.strip() and name.strip()):
+            raise ValueError(
+                "must be 'provider:model', e.g. 'anthropic:claude-sonnet-5'"
+            )
+        return value
+
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def _blank_key_is_unset(cls, value):
+        # api_key = "" in TOML means "use the provider's env var", as in from_env.
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @property
+    def provider(self) -> str:
+        return self.model.partition(":")[0]
+
+
+class ModelsConfig(_Model):
+    generator: LLMConfig
+    semantic_validator: LLMConfig | None = None
+    summarizer: LLMConfig | None = None
+
+    @property
+    def resolved_semantic_validator(self) -> LLMConfig:
+        return self._resolve(self.semantic_validator)
+
+    @property
+    def resolved_summarizer(self) -> LLMConfig:
+        return self._resolve(self.summarizer)
+
+    def _resolve(self, stage: LLMConfig | None) -> LLMConfig:
+        if stage is None:
+            return self.generator
+        # A stage on the generator's provider reuses the generator's key.
+        if stage.api_key is None and stage.provider == self.generator.provider:
+            return stage.model_copy(update={"api_key": self.generator.api_key})
+        return stage
+
+
+class DatabaseConfig(_Model):
+    dsn: SecretStr
+    dialect: str | None = None
+
+    @model_validator(mode="after")
+    def _infer_dialect(self) -> "DatabaseConfig":
+        if self.dialect and self.dialect.strip():
+            _check_dialect(self.dialect)
+            return self
+        try:
+            backend = make_url(self.dsn.get_secret_value()).get_backend_name()
+        except (ArgumentError, ValueError):
+            # These messages contain the DSN (or part of its password), so
+            # don't chain them.
+            raise ValueError(
+                "database.dsn is not a valid SQLAlchemy URL "
+                "(URL-encode special characters such as '@' or ':' in the password)"
+            ) from None
+        dialect = DIALECTS_BY_BACKEND.get(backend)
+        if dialect is None:
+            raise ValueError(
+                f"cannot infer the SQL dialect for database backend '{backend}'; "
+                f"set database.dialect (env {ENV_PREFIX}DIALECT)"
+            )
+        self.dialect = dialect
+        return self
+
+
+def _check_dialect(dialect: str) -> None:
+    try:
+        Dialect.get_or_raise(sqlglot_dialect(dialect))
+    except ValueError:
+        raise ValueError(
+            f"unknown SQL dialect '{dialect}'; use a sqlglot dialect name such as "
+            f"PostgreSQL, SQLite, MySQL, Snowflake or TSQL (env {ENV_PREFIX}DIALECT)"
+        ) from None
+
+
+class AnalystConfig(_Model):
+    database: DatabaseConfig
+    models: ModelsConfig
+
+    @classmethod
+    def from_toml(cls, path: str | Path) -> "AnalystConfig":
+        path = Path(path)
+        try:
+            with path.open("rb") as handle:
+                data = tomllib.load(handle)
+        except FileNotFoundError:
+            raise ConfigError(f"Config file not found: {path}") from None
+        except tomllib.TOMLDecodeError as error:
+            raise ConfigError(f"Config file {path} is not valid TOML: {error}") from None
+        return cls._validate(data, source=str(path))
+
+    @classmethod
+    def from_env(cls, **overrides: str | None) -> "AnalystConfig":
+        unknown = set(overrides) - ENV_FIELDS.keys()
+        if unknown:
+            raise ConfigError(
+                f"Unknown from_env override(s): {', '.join(sorted(unknown))}"
+            )
+
+        values = {}
+        for key in ENV_FIELDS:
+            value = os.environ.get(ENV_PREFIX + key.upper(), "").strip()
+            if value:
+                values[key] = value
+        values.update({key: value for key, value in overrides.items() if value})
+
+        # Start from the required skeleton so missing values are reported as
+        # e.g. database.dsn (with its env var) rather than a missing section.
+        data: dict = {"database": {}, "models": {"generator": {}}}
+        for key, value in values.items():
+            *parents, leaf = ENV_FIELDS[key]
+            node = data
+            for part in parents:
+                node = node.setdefault(part, {})
+            node[leaf] = value
+        return cls._validate(data, source="environment")
+
+    @classmethod
+    def _validate(cls, data: dict, source: str) -> "AnalystConfig":
+        try:
+            return cls.model_validate(data)
+        except ValidationError as error:
+            raise _config_error(error, source) from None
+
+
+def _config_error(error: ValidationError, source: str) -> ConfigError:
+    lines = [f"Invalid askyourdb configuration ({source}):"]
+    for item in error.errors():
+        field = ".".join(str(part) for part in item["loc"])
+        env_var = ENV_VAR_BY_FIELD.get(field)
+        hint = f" (TOML key '{field}', env {env_var})" if env_var else ""
+        lines.append(f"- {field or 'config'}: {item['msg']}{hint}")
+    return ConfigError("\n".join(lines))

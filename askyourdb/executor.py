@@ -1,6 +1,6 @@
 from sqlalchemy import Engine, text
 
-from src.data_models import SQLQuery
+from askyourdb.data_models import SQLQuery
 
 
 class QueryExecutor:

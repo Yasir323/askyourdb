@@ -22,3 +22,6 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
+
+# Local askyourdb config (may contain keys)
+askyourdb.toml

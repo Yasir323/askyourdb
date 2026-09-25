@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, text
 
-from src.data_models import SQLQuery
-from src.executor import QueryExecutor
+from askyourdb.data_models import SQLQuery
+from askyourdb.executor import QueryExecutor
 
 
 def test_query_executor_returns_mapping_rows():

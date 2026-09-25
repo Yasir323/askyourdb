@@ -1,0 +1,19 @@
+# Copy to askyourdb.toml and run:  askyourdb --config askyourdb.toml
+# Keep real keys out of git (or omit api_key and use the provider's env var).
+
+[database]
+# Use a read-only database user.
+dsn = "postgresql+psycopg://readonly_user:password@localhost:5432/mydb"
+# dialect = "PostgreSQL"   # inferred for postgresql / sqlite / mysql DSNs
+
+[models.generator]
+model = "anthropic:claude-sonnet-5"
+# api_key = "sk-ant-..."   # default: ANTHROPIC_API_KEY
+# temperature = 0.0
+
+# Optional: use different (e.g. cheaper) models for the other stages.
+# Each defaults to the generator settings.
+# [models.semantic_validator]
+# model = "groq:llama-3.3-70b-versatile"
+# [models.summarizer]
+# model = "openai:gpt-5-mini"
