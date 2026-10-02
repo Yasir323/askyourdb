@@ -5,7 +5,7 @@ import askyourdb.models as models
 from askyourdb.data_models import ResultSummary, SQLQuery
 from askyourdb.executor import QueryExecutor
 from askyourdb.graph import build_sql_graph
-from askyourdb.schema_intropection import SchemaIntrospector
+from askyourdb.schema_introspection import SchemaIntrospector
 from askyourdb.sql_validator import SqlValidator
 from askyourdb.models import render_schema
 

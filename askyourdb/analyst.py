@@ -12,7 +12,7 @@ from askyourdb.models import (
     build_sql_semantic_validator,
     render_schema,
 )
-from askyourdb.schema_intropection import SchemaIntrospector
+from askyourdb.schema_introspection import SchemaIntrospector
 from askyourdb.sql_validator import SqlValidator
 from askyourdb.tools import ProgressEvent, build_query_database_tool, run_query
 

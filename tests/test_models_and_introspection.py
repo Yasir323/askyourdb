@@ -6,10 +6,10 @@ from sqlalchemy.schema import UniqueConstraint as SARealUniqueConstraint
 from langchain_core.runnables import RunnableLambda
 
 import askyourdb.models as models
-import askyourdb.schema_intropection as introspection_module
+import askyourdb.schema_introspection as introspection_module
 from askyourdb.config import ConfigError, LLMConfig
 from askyourdb.data_models import Column, Table
-from askyourdb.schema_intropection import SchemaIntrospector
+from askyourdb.schema_introspection import SchemaIntrospector
 
 
 def test_render_schema_uses_table_rendering():
