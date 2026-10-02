@@ -2,6 +2,19 @@
 name = "askyourdb"
 version = "0.1.0"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Yasir Jafri" }]
+keywords = ["sql", "llm", "text-to-sql", "langchain", "database", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 description = "Ask questions of your SQL database in plain English, using your own LLM API key."
 requires-python = ">=3.13"
 dependencies = [
@@ -24,6 +37,11 @@ all = [
     "langchain-groq>=1.1.3",
 ]
 
+[project.urls]
+Homepage = "https://github.com/Yasir323/askyourdb"
+Issues = "https://github.com/Yasir323/askyourdb/issues"
+Source = "https://github.com/Yasir323/askyourdb"
+
 [project.scripts]
 askyourdb = "askyourdb.cli:main"
 
@@ -39,6 +57,8 @@ include = [
     "askyourdb/",
     "tests/",
     "README.md",
+    "LICENSE",
+    "NOTICE",
     "askyourdb.example.toml",
     ".env.example",
 ]

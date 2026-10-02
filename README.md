@@ -166,3 +166,10 @@ uv sync --extra google        # the demo defaults to a Gemini model
 uv run python main.py         # asks the school database one question
 uv run pytest                 # tests, with a 90% coverage gate
 ```
+
+## License
+
+askyourdb is licensed under the [Apache License 2.0](LICENSE). You may use, modify and
+redistribute it, including commercially, provided you keep the [`NOTICE`](NOTICE) file
+and the license text with your copies, and mark any files you changed. See the
+license for the full terms.
