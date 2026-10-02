@@ -11,12 +11,14 @@ classifiers = [
     "Environment :: Console",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Database",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 description = "Ask questions of your SQL database in plain English, using your own LLM API key."
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "sqlalchemy>=2.0.52",
     "psycopg[binary]>=3.2",
