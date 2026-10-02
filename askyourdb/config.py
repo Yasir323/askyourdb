@@ -41,9 +41,7 @@ ENV_FIELDS = {
     "summary_model": ("models", "summarizer", "model"),
     "summary_api_key": ("models", "summarizer", "api_key"),
 }
-ENV_VAR_BY_FIELD = {
-    ".".join(path): ENV_PREFIX + key.upper() for key, path in ENV_FIELDS.items()
-}
+ENV_VAR_BY_FIELD = {".".join(path): ENV_PREFIX + key.upper() for key, path in ENV_FIELDS.items()}
 
 
 class _Model(BaseModel):
@@ -62,9 +60,7 @@ class LLMConfig(_Model):
     def _require_provider_prefix(cls, value: str) -> str:
         provider, separator, name = value.partition(":")
         if not (separator and provider.strip() and name.strip()):
-            raise ValueError(
-                "must be 'provider:model', e.g. 'anthropic:claude-sonnet-5'"
-            )
+            raise ValueError("must be 'provider:model', e.g. 'anthropic:claude-sonnet-5'")
         return value
 
     @field_validator("api_key", mode="before")
@@ -160,9 +156,7 @@ class AnalystConfig(_Model):
     def from_env(cls, **overrides: str | None) -> "AnalystConfig":
         unknown = set(overrides) - ENV_FIELDS.keys()
         if unknown:
-            raise ConfigError(
-                f"Unknown from_env override(s): {', '.join(sorted(unknown))}"
-            )
+            raise ConfigError(f"Unknown from_env override(s): {', '.join(sorted(unknown))}")
 
         values = {}
         for key in ENV_FIELDS:

@@ -1,9 +1,9 @@
 import pytest
+from langchain_core.runnables import RunnableLambda
 from sqlalchemy import CheckConstraint as SARealCheckConstraint
-from sqlalchemy import Integer, MetaData
+from sqlalchemy import Integer
 from sqlalchemy.dialects.postgresql import dialect as postgres_dialect
 from sqlalchemy.schema import UniqueConstraint as SARealUniqueConstraint
-from langchain_core.runnables import RunnableLambda
 
 import askyourdb.models as models
 import askyourdb.schema_introspection as introspection_module
@@ -31,26 +31,32 @@ class FakeChatModel:
 def test_model_builders_create_structured_chains(monkeypatch):
     calls = []
     monkeypatch.setattr(
-        models, "init_chat_model",
+        models,
+        "init_chat_model",
         lambda *args, **kwargs: calls.append((args, kwargs)) or FakeChatModel(),
     )
 
     generator = models.build_sql_generator(
-        "students (student_id INTEGER)", "PostgreSQL", LLMConfig(model="openai:gpt-5"),
+        "students (student_id INTEGER)",
+        "PostgreSQL",
+        LLMConfig(model="openai:gpt-5"),
     )
     semantic = models.build_sql_semantic_validator(LLMConfig(model="groq:llama-3.3-70b"))
     summarizer = models.build_result_summarizer(LLMConfig(model="anthropic:claude-sonnet-5"))
 
     assert generator is not None and semantic is not None and summarizer is not None
     assert [args[0] for args, _ in calls] == [
-        "openai:gpt-5", "groq:llama-3.3-70b", "anthropic:claude-sonnet-5",
+        "openai:gpt-5",
+        "groq:llama-3.3-70b",
+        "anthropic:claude-sonnet-5",
     ]
 
 
 def test_build_llm_passes_api_key_only_when_set(monkeypatch):
     calls = []
-    monkeypatch.setattr(models, "init_chat_model",
-                        lambda model, **kwargs: calls.append(kwargs) or FakeChatModel())
+    monkeypatch.setattr(
+        models, "init_chat_model", lambda model, **kwargs: calls.append(kwargs) or FakeChatModel()
+    )
 
     models.build_llm(LLMConfig(model="openai:gpt-5", api_key="sk-1", temperature=0.2))
     models.build_llm(LLMConfig(model="openai:gpt-5"))
@@ -74,7 +80,7 @@ def test_build_llm_google_provider_maps_to_google_extra(monkeypatch):
 
     monkeypatch.setattr(models, "init_chat_model", missing)
 
-    with pytest.raises(ConfigError, match=r'askyourdb\[google\]'):
+    with pytest.raises(ConfigError, match=r"askyourdb\[google\]"):
         models.build_llm(LLMConfig(model="google_genai:gemini-3.5-flash-lite"))
 
 
@@ -137,13 +143,15 @@ class FakeInspector:
         return {"constrained_columns": ["student_id"], "name": "students_pkey"}
 
     def get_foreign_keys(self, table_name):
-        return [{
-            "constrained_columns": ["student_id"],
-            "referred_table": "students",
-            "referred_columns": ["student_id"],
-            "name": "students_self_fkey",
-            "options": {"ondelete": "CASCADE", "onupdate": "NO ACTION"},
-        }]
+        return [
+            {
+                "constrained_columns": ["student_id"],
+                "referred_table": "students",
+                "referred_columns": ["student_id"],
+                "name": "students_self_fkey",
+                "options": {"ondelete": "CASCADE", "onupdate": "NO ACTION"},
+            }
+        ]
 
 
 def test_schema_introspector_loads_tables_and_constraints(monkeypatch):
@@ -194,15 +202,23 @@ def test_schema_introspector_disposes_engine_on_reflection_failure(monkeypatch):
 
 def test_server_default_rendering():
     assert SchemaIntrospector._server_default(type("Column", (), {"server_default": None})()) == ""
-    assert SchemaIntrospector._server_default(
-        type("Column", (), {"server_default": type("Default", (), {"sqltext": "now()"})()})()
-    ) == "GENERATED ALWAYS AS (now())"
-    assert SchemaIntrospector._server_default(
-        type("Column", (), {"server_default": type("Default", (), {"arg": "42"})()})()
-    ) == "DEFAULT 42"
-    assert SchemaIntrospector._server_default(
-        type("Column", (), {"server_default": "CURRENT_DATE"})()
-    ) == "DEFAULT CURRENT_DATE"
+    assert (
+        SchemaIntrospector._server_default(
+            type("Column", (), {"server_default": type("Default", (), {"sqltext": "now()"})()})()
+        )
+        == "GENERATED ALWAYS AS (now())"
+    )
+    assert (
+        SchemaIntrospector._server_default(
+            type("Column", (), {"server_default": type("Default", (), {"arg": "42"})()})()
+        )
+        == "DEFAULT 42"
+    )
+    assert (
+        SchemaIntrospector._server_default(type("Column", (), {"server_default": "CURRENT_DATE"})())
+        == "DEFAULT CURRENT_DATE"
+    )
+
 
 def test_build_llm_provider_validation_error_does_not_echo_api_key(monkeypatch):
     from pydantic import BaseModel

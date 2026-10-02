@@ -1,6 +1,6 @@
 from typing import TypedDict
 
-from askyourdb.data_models import SQLQuery, ResultSummary
+from askyourdb.data_models import ResultSummary, SQLQuery
 
 
 class AnalystState(TypedDict):

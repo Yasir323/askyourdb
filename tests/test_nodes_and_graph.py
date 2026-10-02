@@ -3,12 +3,12 @@ from askyourdb.graph import build_sql_graph
 from askyourdb.nodes import (
     execute_sql_node,
     generate_sql_node,
+    route_after_execution,
     route_after_semantic_validation,
     route_after_static_validation,
-    route_after_execution,
+    route_after_summary,
     semantic_validate_sql_node,
     summarize_results_node,
-    route_after_summary,
     validate_sql_node,
 )
 
@@ -112,11 +112,13 @@ def test_generate_sql_node_includes_feedback_and_increments_attempts():
 
 
 def test_validate_sql_node_accepts_and_rewrites_query():
-    validator = FakeStaticValidator({
-        "is_valid": True,
-        "error_message": [],
-        "sql_query": "SELECT student_id FROM students LIMIT 100",
-    })
+    validator = FakeStaticValidator(
+        {
+            "is_valid": True,
+            "error_message": [],
+            "sql_query": "SELECT student_id FROM students LIMIT 100",
+        }
+    )
 
     result = validate_sql_node(state(sql_query=query()), validator)
 
@@ -125,11 +127,13 @@ def test_validate_sql_node_accepts_and_rewrites_query():
 
 
 def test_validate_sql_node_returns_feedback_on_failure():
-    validator = FakeStaticValidator({
-        "is_valid": False,
-        "error_message": ["Unknown table: courses"],
-        "sql_query": None,
-    })
+    validator = FakeStaticValidator(
+        {
+            "is_valid": False,
+            "error_message": ["Unknown table: courses"],
+            "sql_query": None,
+        }
+    )
 
     result = validate_sql_node(state(sql_query=query()), validator)
 
@@ -137,10 +141,16 @@ def test_validate_sql_node_returns_feedback_on_failure():
 
 
 def test_semantic_validate_sql_node_accepts_query():
-    validator = FakeSemanticValidator(type("Verdict", (), {
-        "is_valid": True,
-        "feedback": "",
-    })())
+    validator = FakeSemanticValidator(
+        type(
+            "Verdict",
+            (),
+            {
+                "is_valid": True,
+                "feedback": "",
+            },
+        )()
+    )
 
     result = semantic_validate_sql_node(state(sql_query=query()), validator)
 
@@ -149,10 +159,16 @@ def test_semantic_validate_sql_node_accepts_query():
 
 
 def test_semantic_validate_sql_node_returns_feedback():
-    validator = FakeSemanticValidator(type("Verdict", (), {
-        "is_valid": False,
-        "feedback": "The query does not count rows.",
-    })())
+    validator = FakeSemanticValidator(
+        type(
+            "Verdict",
+            (),
+            {
+                "is_valid": False,
+                "feedback": "The query does not count rows.",
+            },
+        )()
+    )
 
     result = semantic_validate_sql_node(state(sql_query=query()), validator)
 
@@ -164,17 +180,13 @@ def test_semantic_validate_sql_node_returns_feedback():
 def test_routes_static_validation_to_semantic_retry_or_failure():
     assert route_after_static_validation(state()) == "semantic"
     assert route_after_static_validation(state(error_feedback="bad")) == "retry"
-    assert route_after_static_validation(
-        state(error_feedback="bad", attempts=3)
-    ) == "failure"
+    assert route_after_static_validation(state(error_feedback="bad", attempts=3)) == "failure"
 
 
 def test_routes_semantic_validation_to_success_retry_or_failure():
     assert route_after_semantic_validation(state()) == "success"
     assert route_after_semantic_validation(state(error_feedback="bad")) == "retry"
-    assert route_after_semantic_validation(
-        state(error_feedback="bad", attempts=3)
-    ) == "failure"
+    assert route_after_semantic_validation(state(error_feedback="bad", attempts=3)) == "failure"
 
 
 def test_execute_sql_node_returns_rows():
@@ -194,18 +206,14 @@ def test_execute_sql_node_captures_database_error():
     result = execute_sql_node(state(sql_query=query()), executor)
 
     assert result["rows"] is None
-    assert result["execution_error"] == (
-        "SQL execution failed: no such table: students"
-    )
+    assert result["execution_error"] == ("SQL execution failed: no such table: students")
     assert result["error_feedback"] == result["execution_error"]
 
 
 def test_routes_execution_to_success_retry_or_failure():
     assert route_after_execution(state()) == "success"
     assert route_after_execution(state(execution_error="bad")) == "retry"
-    assert route_after_execution(
-        state(execution_error="bad", attempts=3)
-    ) == "failure"
+    assert route_after_execution(state(execution_error="bad", attempts=3)) == "failure"
 
 
 def test_summarize_results_node_preserves_sql_and_rows():
@@ -236,22 +244,28 @@ def test_summarize_results_node_retries_without_reexecuting():
 def test_routes_summary_to_success_retry_or_failure():
     assert route_after_summary(state()) == "success"
     assert route_after_summary(state(summary_error="bad")) == "retry_summary"
-    assert route_after_summary(
-        state(summary_error="bad", summary_attempts=2)
-    ) == "failure"
+    assert route_after_summary(state(summary_error="bad", summary_attempts=2)) == "failure"
 
 
 def test_graph_retries_then_finishes_on_success():
     generator = FakeGenerator(query())
-    static_validator = FakeStaticValidator({
-        "is_valid": True,
-        "error_message": [],
-        "sql_query": "SELECT student_id FROM students LIMIT 100",
-    })
-    semantic_validator = FakeSemanticValidator(type("Verdict", (), {
-        "is_valid": True,
-        "feedback": "",
-    })())
+    static_validator = FakeStaticValidator(
+        {
+            "is_valid": True,
+            "error_message": [],
+            "sql_query": "SELECT student_id FROM students LIMIT 100",
+        }
+    )
+    semantic_validator = FakeSemanticValidator(
+        type(
+            "Verdict",
+            (),
+            {
+                "is_valid": True,
+                "feedback": "",
+            },
+        )()
+    )
 
     graph = build_sql_graph(
         generator,
@@ -269,15 +283,23 @@ def test_graph_retries_then_finishes_on_success():
 
 def test_graph_executes_query_and_stores_rows():
     generator = FakeGenerator(query())
-    static_validator = FakeStaticValidator({
-        "is_valid": True,
-        "error_message": [],
-        "sql_query": "SELECT student_id FROM students LIMIT 100",
-    })
-    semantic_validator = FakeSemanticValidator(type("Verdict", (), {
-        "is_valid": True,
-        "feedback": "",
-    })())
+    static_validator = FakeStaticValidator(
+        {
+            "is_valid": True,
+            "error_message": [],
+            "sql_query": "SELECT student_id FROM students LIMIT 100",
+        }
+    )
+    semantic_validator = FakeSemanticValidator(
+        type(
+            "Verdict",
+            (),
+            {
+                "is_valid": True,
+                "feedback": "",
+            },
+        )()
+    )
     executor = FakeExecutor(rows=[{"student_id": 1}])
 
     graph = build_sql_graph(
@@ -298,15 +320,23 @@ def test_graph_executes_query_and_stores_rows():
 
 def test_graph_retries_after_execution_error_until_success():
     generator = FakeGenerator(query())
-    static_validator = FakeStaticValidator({
-        "is_valid": True,
-        "error_message": [],
-        "sql_query": "SELECT student_id FROM students LIMIT 100",
-    })
-    semantic_validator = FakeSemanticValidator(type("Verdict", (), {
-        "is_valid": True,
-        "feedback": "",
-    })())
+    static_validator = FakeStaticValidator(
+        {
+            "is_valid": True,
+            "error_message": [],
+            "sql_query": "SELECT student_id FROM students LIMIT 100",
+        }
+    )
+    semantic_validator = FakeSemanticValidator(
+        type(
+            "Verdict",
+            (),
+            {
+                "is_valid": True,
+                "feedback": "",
+            },
+        )()
+    )
 
     class RetryExecutor(FakeExecutor):
         def execute_query(self, sql_query):
@@ -337,15 +367,23 @@ def test_graph_retries_after_execution_error_until_success():
 
 def test_graph_stops_after_execution_retry_limit():
     generator = FakeGenerator(query())
-    static_validator = FakeStaticValidator({
-        "is_valid": True,
-        "error_message": [],
-        "sql_query": "SELECT student_id FROM students LIMIT 100",
-    })
-    semantic_validator = FakeSemanticValidator(type("Verdict", (), {
-        "is_valid": True,
-        "feedback": "",
-    })())
+    static_validator = FakeStaticValidator(
+        {
+            "is_valid": True,
+            "error_message": [],
+            "sql_query": "SELECT student_id FROM students LIMIT 100",
+        }
+    )
+    semantic_validator = FakeSemanticValidator(
+        type(
+            "Verdict",
+            (),
+            {
+                "is_valid": True,
+                "feedback": "",
+            },
+        )()
+    )
     executor = FakeExecutor(error="persistent database failure")
     graph = build_sql_graph(
         generator,
@@ -360,24 +398,30 @@ def test_graph_stops_after_execution_retry_limit():
         config={"configurable": {"thread_id": "execution-failure"}},
     )
 
-    assert result["execution_error"] == (
-        "SQL execution failed: persistent database failure"
-    )
+    assert result["execution_error"] == ("SQL execution failed: persistent database failure")
     assert result["attempts"] == 2
     assert len(executor.inputs) == 2
 
 
 def test_checkpointer_keeps_threads_isolated():
     generator = FakeGenerator(query())
-    static_validator = FakeStaticValidator({
-        "is_valid": True,
-        "error_message": [],
-        "sql_query": "SELECT student_id FROM students LIMIT 100",
-    })
-    semantic_validator = FakeSemanticValidator(type("Verdict", (), {
-        "is_valid": True,
-        "feedback": "",
-    })())
+    static_validator = FakeStaticValidator(
+        {
+            "is_valid": True,
+            "error_message": [],
+            "sql_query": "SELECT student_id FROM students LIMIT 100",
+        }
+    )
+    semantic_validator = FakeSemanticValidator(
+        type(
+            "Verdict",
+            (),
+            {
+                "is_valid": True,
+                "feedback": "",
+            },
+        )()
+    )
     executor = FakeExecutor(rows=[{"student_id": 1}])
     graph = build_sql_graph(
         generator,
@@ -400,15 +444,19 @@ def test_checkpointer_keeps_threads_isolated():
     assert second["question"] == "Second question"
     assert len(generator.inputs) == 2
 
+
 def test_execute_sql_node_reports_only_the_database_message():
     from sqlalchemy.exc import DataError
 
     class RejectingExecutor:
         def execute_query(self, sql_query):
             raise DataError(
-                "SELECT ...", {},
-                Exception('invalid input value for enum invoice_status: "pending"\n'
-                          "LINE 1: ...WHERE i.status IN ('pending')\n        ^"),
+                "SELECT ...",
+                {},
+                Exception(
+                    'invalid input value for enum invoice_status: "pending"\n'
+                    "LINE 1: ...WHERE i.status IN ('pending')\n        ^"
+                ),
             )
 
     state = {"sql_query": SQLQuery(sql="SELECT 1", reasoning="r", tables_used=[])}
@@ -421,12 +469,14 @@ def test_execute_sql_node_reports_only_the_database_message():
 
 
 def test_validate_sql_node_records_the_imposed_row_limit():
-    validator = FakeStaticValidator({
-        "is_valid": True,
-        "error_message": [],
-        "sql_query": "SELECT student_id FROM students LIMIT 100",
-        "row_limit": 100,
-    })
+    validator = FakeStaticValidator(
+        {
+            "is_valid": True,
+            "error_message": [],
+            "sql_query": "SELECT student_id FROM students LIMIT 100",
+            "row_limit": 100,
+        }
+    )
 
     result = validate_sql_node(state(sql_query=query()), validator)
 

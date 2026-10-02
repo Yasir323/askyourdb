@@ -1,10 +1,17 @@
-from sqlalchemy import create_engine, MetaData, inspect
 from sqlalchemy import CheckConstraint as SACheckConstraint
 from sqlalchemy import ForeignKeyConstraint as SAForeignKeyConstraint
+from sqlalchemy import MetaData, create_engine, inspect
 from sqlalchemy import PrimaryKeyConstraint as SAPrimaryKeyConstraint
 from sqlalchemy import UniqueConstraint as SAUniqueConstraint
 
-from askyourdb.data_models import CheckConstraint, Column, PrimaryKey, Relation, Table, UniqueConstraint
+from askyourdb.data_models import (
+    CheckConstraint,
+    Column,
+    PrimaryKey,
+    Relation,
+    Table,
+    UniqueConstraint,
+)
 
 
 class SchemaIntrospector:
@@ -29,14 +36,16 @@ class SchemaIntrospector:
 
             # Columns
             for column in table_obj.columns:
-                table.columns.append(Column(
-                    name=column.name,
-                    type=column.type,
-                    type_sql=column.type.compile(self._engine.dialect),
-                    nullable=column.nullable,
-                    default=self._server_default(column),
-                    enum_values=tuple(getattr(column.type, "enums", None) or ()),
-                ))
+                table.columns.append(
+                    Column(
+                        name=column.name,
+                        type=column.type,
+                        type_sql=column.type.compile(self._engine.dialect),
+                        nullable=column.nullable,
+                        default=self._server_default(column),
+                        enum_values=tuple(getattr(column.type, "enums", None) or ()),
+                    )
+                )
 
             # Primary key
             pk_constraint = inspector.get_pk_constraint(table_name)
@@ -49,35 +58,44 @@ class SchemaIntrospector:
             # Relations
             for fk in inspector.get_foreign_keys(table_name):
                 options = fk.get("options", {})
-                table.relations.append(Relation(
-                    columns=tuple(fk["constrained_columns"]),
-                    referred_table=fk["referred_table"],
-                    referred_columns=tuple(fk["referred_columns"]),
-                    name=fk.get("name") or "",
-                    on_delete=options.get("ondelete") or "",
-                    on_update=options.get("onupdate") or "",
-                ))
+                table.relations.append(
+                    Relation(
+                        columns=tuple(fk["constrained_columns"]),
+                        referred_table=fk["referred_table"],
+                        referred_columns=tuple(fk["referred_columns"]),
+                        name=fk.get("name") or "",
+                        on_delete=options.get("ondelete") or "",
+                        on_update=options.get("onupdate") or "",
+                    )
+                )
 
             # Other constraints. table_obj.constraints is a set, so sort for a
             # stable rendering across runs.
             other_constraints = sorted(
-                (c for c in table_obj.constraints
-                if not isinstance(c, (SAForeignKeyConstraint, SAPrimaryKeyConstraint))),
+                (
+                    c
+                    for c in table_obj.constraints
+                    if not isinstance(c, (SAForeignKeyConstraint, SAPrimaryKeyConstraint))
+                ),
                 key=lambda c: (type(c).__name__, c.name or ""),
             )
 
             for constraint in other_constraints:
                 if isinstance(constraint, SAUniqueConstraint):
-                    table.constraints.append(UniqueConstraint(
-                        columns=tuple(col.name for col in constraint.columns),
-                        name=constraint.name or "",
-                    ))
+                    table.constraints.append(
+                        UniqueConstraint(
+                            columns=tuple(col.name for col in constraint.columns),
+                            name=constraint.name or "",
+                        )
+                    )
 
                 elif isinstance(constraint, SACheckConstraint):
-                    table.constraints.append(CheckConstraint(
-                        text=f"{constraint.sqltext}",
-                        name=constraint.name or "",
-                    ))
+                    table.constraints.append(
+                        CheckConstraint(
+                            text=f"{constraint.sqltext}",
+                            name=constraint.name or "",
+                        )
+                    )
 
     @staticmethod
     def _server_default(column) -> str:

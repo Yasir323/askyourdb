@@ -9,26 +9,46 @@ from askyourdb.config import ConfigError
 from askyourdb.tools import ProgressEvent
 
 OK = {
-    "success": True, "answer": "Ada owes the most.", "row_count": 1,
+    "success": True,
+    "answer": "Ada owes the most.",
+    "row_count": 1,
     "sql_used": "SELECT name, owed FROM people LIMIT 100",
-    "caveats": ["Sample data"], "rows": [{"name": "Ada", "owed": Decimal("12.50")}],
-    "truncated": False, "error": None,
+    "caveats": ["Sample data"],
+    "rows": [{"name": "Ada", "owed": Decimal("12.50")}],
+    "truncated": False,
+    "error": None,
 }
 SCALAR = {
-    "success": True, "answer": "There are 500 students in total.", "row_count": 1,
-    "sql_used": "SELECT COUNT(*) AS n FROM students", "caveats": [],
-    "rows": [{"n": 500}], "truncated": False, "error": None,
+    "success": True,
+    "answer": "There are 500 students in total.",
+    "row_count": 1,
+    "sql_used": "SELECT COUNT(*) AS n FROM students",
+    "caveats": [],
+    "rows": [{"n": 500}],
+    "truncated": False,
+    "error": None,
 }
 FAILED = {
-    "success": False, "answer": None, "row_count": 0, "sql_used": "SELECT bad",
-    "caveats": [], "rows": [], "truncated": False, "error": "Unknown column 'bad'",
+    "success": False,
+    "answer": None,
+    "row_count": 0,
+    "sql_used": "SELECT bad",
+    "caveats": [],
+    "rows": [],
+    "truncated": False,
+    "error": "Unknown column 'bad'",
 }
 
 
 def table_result(n_rows, truncated=False):
     rows = [{"id": i, "name": f"p{i}"} for i in range(n_rows)]
-    return {**OK, "answer": f"{n_rows} people.", "row_count": n_rows,
-            "rows": rows, "truncated": truncated}
+    return {
+        **OK,
+        "answer": f"{n_rows} people.",
+        "row_count": n_rows,
+        "rows": rows,
+        "truncated": truncated,
+    }
 
 
 class FakeAnalyst:
@@ -171,7 +191,7 @@ def test_library_warnings_are_hidden_unless_verbose(recwarn, caplog):
     import warnings
 
     def noisy():
-        warnings.warn("temperature will be ignored", UserWarning)
+        warnings.warn("temperature will be ignored", UserWarning, stacklevel=2)
         logging.getLogger("google_genai.models").warning("AFC is not recommended")
 
     FakeAnalyst.during_ask = noisy
@@ -289,7 +309,9 @@ def test_missing_provider_package_exits_2(capsys):
 
 def test_unreachable_database_exits_2(capsys):
     FakeAnalyst.init_error = OperationalError(
-        "SELECT 1", {}, Exception("connection refused\nis the server running?"),
+        "SELECT 1",
+        {},
+        Exception("connection refused\nis the server running?"),
     )
 
     code = cli.main(["ask", "q"])
@@ -302,8 +324,10 @@ def test_unreachable_database_exits_2(capsys):
 
 def test_config_file_is_used_instead_of_env(tmp_path):
     path = tmp_path / "askyourdb.toml"
-    path.write_text('[database]\ndsn = "sqlite:///file.db"\n\n'
-                    '[models.generator]\nmodel = "groq:llama-3.3-70b"\n')
+    path.write_text(
+        '[database]\ndsn = "sqlite:///file.db"\n\n'
+        '[models.generator]\nmodel = "groq:llama-3.3-70b"\n'
+    )
     FakeAnalyst.results = [OK]
 
     cli.main(["--config", str(path), "ask", "q"])

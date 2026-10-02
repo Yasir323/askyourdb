@@ -8,9 +8,7 @@ def test_normalizes_postgresql_dialect(validator):
 
 
 def test_accepts_valid_select_and_preserves_limit(validator):
-    result = validator.validate(
-        "SELECT s.student_id FROM students AS s LIMIT 5"
-    )
+    result = validator.validate("SELECT s.student_id FROM students AS s LIMIT 5")
 
     assert result["is_valid"] is True
     assert result["error_message"] == []
@@ -40,15 +38,18 @@ def test_rejects_invalid_sql(validator):
     assert result["error_message"][0].startswith("Parse error:")
 
 
-@pytest.mark.parametrize("sql", [
-    "INSERT INTO students (student_id) VALUES (1)",
-    "UPDATE students SET first_name = 'Ada'",
-    "DELETE FROM students",
-    "DROP TABLE students",
-    "CREATE TABLE new_table (id INTEGER)",
-    "TRUNCATE TABLE students",
-    "ALTER TABLE students ADD COLUMN email TEXT",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "INSERT INTO students (student_id) VALUES (1)",
+        "UPDATE students SET first_name = 'Ada'",
+        "DELETE FROM students",
+        "DROP TABLE students",
+        "CREATE TABLE new_table (id INTEGER)",
+        "TRUNCATE TABLE students",
+        "ALTER TABLE students ADD COLUMN email TEXT",
+    ],
+)
 def test_rejects_non_read_statements(validator, sql):
     result = validator.validate(sql)
 
@@ -56,11 +57,14 @@ def test_rejects_non_read_statements(validator, sql):
     assert any("Only Read statements" in error for error in result["error_message"])
 
 
-@pytest.mark.parametrize("sql", [
-    "SELECT student_id FROM students WHERE student_id IN (SELECT student_id FROM students)",
-    "WITH recent AS (SELECT student_id FROM students) SELECT student_id FROM recent",
-    "SELECT student_id FROM students UNION SELECT student_id FROM students",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT student_id FROM students WHERE student_id IN (SELECT student_id FROM students)",
+        "WITH recent AS (SELECT student_id FROM students) SELECT student_id FROM recent",
+        "SELECT student_id FROM students UNION SELECT student_id FROM students",
+    ],
+)
 def test_accepts_read_query_shapes(validator, sql):
     result = validator.validate(sql)
 
@@ -105,6 +109,7 @@ def test_reports_multiple_static_errors(validator):
     assert result["is_valid"] is False
     assert len(result["error_message"]) == 2
 
+
 @pytest.mark.parametrize("dialect", ["SQLite", "sqlite", "MySQL", "PostgreSQL", "postgres"])
 def test_validator_accepts_config_dialect_names(schema, dialect):
     from askyourdb.sql_validator import SqlValidator
@@ -144,11 +149,14 @@ def test_constant_limit_expression_over_cap_is_capped(validator):
     assert result["sql_query"].endswith(f"LIMIT {MAX_ROW_LIMIT}")
 
 
-@pytest.mark.parametrize("sql", [
-    "SELECT student_id FROM students LIMIT (SELECT COUNT(*) FROM students)",
-    "SELECT student_id FROM students FETCH FIRST 50 PERCENT ROWS ONLY",
-    "SELECT student_id FROM students LIMIT 2.5",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT student_id FROM students LIMIT (SELECT COUNT(*) FROM students)",
+        "SELECT student_id FROM students FETCH FIRST 50 PERCENT ROWS ONLY",
+        "SELECT student_id FROM students LIMIT 2.5",
+    ],
+)
 def test_non_constant_or_percent_limit_is_rejected(validator, sql):
     result = validator.validate(sql)
 
@@ -156,10 +164,13 @@ def test_non_constant_or_percent_limit_is_rejected(validator, sql):
     assert any("LIMIT" in message for message in result["error_message"])
 
 
-@pytest.mark.parametrize("sql", [
-    "SELECT COUNT(*) AS n FROM students",
-    "SELECT COUNT(*), MAX(student_id) FROM students WHERE student_id > 3",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT COUNT(*) AS n FROM students",
+        "SELECT COUNT(*), MAX(student_id) FROM students WHERE student_id > 3",
+    ],
+)
 def test_single_row_aggregate_gets_no_limit(validator, sql):
     result = validator.validate(sql)
 
@@ -168,10 +179,13 @@ def test_single_row_aggregate_gets_no_limit(validator, sql):
     assert result["row_limit"] is None
 
 
-@pytest.mark.parametrize("sql", [
-    "SELECT first_name, COUNT(*) FROM students GROUP BY first_name",
-    "SELECT COUNT(*) OVER () FROM students",
-])
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT first_name, COUNT(*) FROM students GROUP BY first_name",
+        "SELECT COUNT(*) OVER () FROM students",
+    ],
+)
 def test_multi_row_aggregates_still_get_a_limit(validator, sql):
     result = validator.validate(sql)
 
@@ -181,6 +195,8 @@ def test_multi_row_aggregates_still_get_a_limit(validator, sql):
 
 def test_row_limit_reports_the_limit_askyourdb_imposed(validator):
     assert validator.validate("SELECT student_id FROM students")["row_limit"] == 100
-    assert validator.validate(
-        "SELECT student_id FROM students LIMIT 99999")["row_limit"] == MAX_ROW_LIMIT
+    assert (
+        validator.validate("SELECT student_id FROM students LIMIT 99999")["row_limit"]
+        == MAX_ROW_LIMIT
+    )
     assert validator.validate("SELECT student_id FROM students LIMIT 5")["row_limit"] is None

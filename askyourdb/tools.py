@@ -59,8 +59,9 @@ def run_query(
 
 def _progress_event(step: str, state: dict) -> ProgressEvent:
     if step == "summarize_results":
-        return ProgressEvent(step, state.get("summary_attempts", 0) + 1,
-                             state["max_summary_attempts"])
+        return ProgressEvent(
+            step, state.get("summary_attempts", 0) + 1, state["max_summary_attempts"]
+        )
     if step == "generate_sql":
         attempt = state.get("attempts", 0) + 1
         reason = state.get("error_feedback") if attempt > 1 else None
@@ -121,7 +122,10 @@ def build_query_database_tool(
 
     def query_database(question: str) -> dict:
         return run_query(
-            graph, question, schema_text, dialect,
+            graph,
+            question,
+            schema_text,
+            dialect,
             thread_id=thread_id,
             max_attempts=max_attempts,
             max_summary_attempts=max_summary_attempts,

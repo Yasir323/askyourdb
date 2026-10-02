@@ -1,5 +1,5 @@
-from langgraph.graph import END, START, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, StateGraph
 
 from askyourdb.nodes import (
     execute_sql_node,
@@ -10,7 +10,7 @@ from askyourdb.nodes import (
     route_after_summary,
     semantic_validate_sql_node,
     summarize_results_node,
-    validate_sql_node
+    validate_sql_node,
 )
 from askyourdb.states import AnalystState
 

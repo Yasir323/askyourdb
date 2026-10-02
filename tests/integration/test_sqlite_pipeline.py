@@ -5,9 +5,9 @@ import askyourdb.models as models
 from askyourdb.data_models import ResultSummary, SQLQuery
 from askyourdb.executor import QueryExecutor
 from askyourdb.graph import build_sql_graph
+from askyourdb.models import render_schema
 from askyourdb.schema_introspection import SchemaIntrospector
 from askyourdb.sql_validator import SqlValidator
-from askyourdb.models import render_schema
 
 
 class FakeChatModel:
@@ -46,14 +46,17 @@ def test_sqlite_database_to_validated_query(monkeypatch, tmp_path):
     engine = create_engine(dsn)
 
     with engine.begin() as connection:
-        connection.execute(text("""
+        connection.execute(
+            text("""
             CREATE TABLE students (
                 student_id INTEGER PRIMARY KEY,
                 first_name TEXT NOT NULL,
                 last_name TEXT NOT NULL
             )
-        """))
-        connection.execute(text("""
+        """)
+        )
+        connection.execute(
+            text("""
             CREATE TABLE invoices (
                 invoice_id INTEGER PRIMARY KEY,
                 student_id INTEGER NOT NULL,
@@ -61,15 +64,18 @@ def test_sqlite_database_to_validated_query(monkeypatch, tmp_path):
                 status TEXT NOT NULL,
                 FOREIGN KEY (student_id) REFERENCES students(student_id)
             )
-        """))
-        connection.execute(text("""
+        """)
+        )
+        connection.execute(
+            text("""
             CREATE TABLE payments (
                 payment_id INTEGER PRIMARY KEY,
                 invoice_id INTEGER NOT NULL,
                 amount NUMERIC NOT NULL,
                 FOREIGN KEY (invoice_id) REFERENCES invoices(invoice_id)
             )
-        """))
+        """)
+        )
         connection.execute(text("INSERT INTO students VALUES (1, 'Ada', 'Lovelace')"))
         connection.execute(text("INSERT INTO students VALUES (2, 'Grace', 'Hopper')"))
         connection.execute(text("INSERT INTO invoices VALUES (1, 1, 100, 'open')"))
@@ -108,7 +114,8 @@ def test_sqlite_database_to_validated_query(monkeypatch, tmp_path):
     from askyourdb.models import build_sql_generator
 
     generator = build_sql_generator(
-        schema_text=schema_text, dialect="SQLite",
+        schema_text=schema_text,
+        dialect="SQLite",
         llm_config=LLMConfig(model="google_genai:gemini-3.5-flash-lite"),
     )
     validator = SqlValidator(schema=schema, dialect="sqlite")
@@ -120,21 +127,24 @@ def test_sqlite_database_to_validated_query(monkeypatch, tmp_path):
         summarizer=AcceptingSummarizer(),
     )
 
-    final_state = graph.invoke({
-        "question": "Which students owe the most in unpaid fees?",
-        "schema": schema_text,
-        "dialect": "SQLite",
-        "sql_query": None,
-        "error_feedback": None,
-        "attempts": 0,
-        "max_attempts": 3,
-        "rows": None,
-        "execution_error": None,
-        "summary": None,
-        "summary_error": None,
-        "summary_attempts": 0,
-        "max_summary_attempts": 2,
-    }, config={"configurable": {"thread_id": "sqlite-integration"}})
+    final_state = graph.invoke(
+        {
+            "question": "Which students owe the most in unpaid fees?",
+            "schema": schema_text,
+            "dialect": "SQLite",
+            "sql_query": None,
+            "error_feedback": None,
+            "attempts": 0,
+            "max_attempts": 3,
+            "rows": None,
+            "execution_error": None,
+            "summary": None,
+            "summary_error": None,
+            "summary_attempts": 0,
+            "max_summary_attempts": 2,
+        },
+        config={"configurable": {"thread_id": "sqlite-integration"}},
+    )
 
     assert final_state["error_feedback"] is None
     assert final_state["summary"].row_count == 2

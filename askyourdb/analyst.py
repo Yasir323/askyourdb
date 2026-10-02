@@ -44,7 +44,9 @@ class SQLAnalyst:
             models = config.models
             self._graph = build_sql_graph(
                 generator=build_sql_generator(
-                    self._schema_text, self._dialect, models.generator,
+                    self._schema_text,
+                    self._dialect,
+                    models.generator,
                 ),
                 validator=SqlValidator(schema=schema, dialect=self._dialect),
                 semantic_validator=build_sql_semantic_validator(
@@ -87,8 +89,12 @@ class SQLAnalyst:
 
     def _run(self, question, thread_id, on_progress) -> dict:
         return run_query(
-            self._graph, question, self._schema_text, self._dialect,
-            thread_id=thread_id, on_progress=on_progress,
+            self._graph,
+            question,
+            self._schema_text,
+            self._dialect,
+            thread_id=thread_id,
+            on_progress=on_progress,
         )
 
     def close(self) -> None:
