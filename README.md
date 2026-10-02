@@ -163,7 +163,7 @@ The repository includes a sample school database and a demo script:
 docker compose up -d          # PostgreSQL with the school schema and data (see db/README.md)
 cp .env.example .env          # fill in ASKYOURDB_API_KEY
 uv sync --extra google        # the demo defaults to a Gemini model
-uv run python main.py         # asks the school database one question
+uv run python examples/school_demo.py         # asks the school database one question
 uv run pytest                 # tests, with a 90% coverage gate
 ```
 
