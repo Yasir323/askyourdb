@@ -29,3 +29,10 @@ askyourdb.toml
 # Build output
 dist/
 build/
+
+# Local contributor/agent tooling (not part of the public repo)
+.claude/
+CLAUDE.md
+project.MD
+docs/superpowers/
+.superpowers/
