@@ -1,5 +1,10 @@
 # askyourdb
 
+[![CI](https://github.com/Yasir323/askyourdb/actions/workflows/ci.yml/badge.svg)](https://github.com/Yasir323/askyourdb/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/askyourdb)](https://pypi.org/project/askyourdb/)
+[![Python](https://img.shields.io/pypi/pyversions/askyourdb)](https://pypi.org/project/askyourdb/)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 Ask a SQL database questions in plain English, using your own LLM API key.
 An LLM writes a read-only `SELECT` for your question. The SQL is then validated
 statically (a single read-only statement, known tables, known columns where they
@@ -146,6 +151,15 @@ print(result["sql_used"])
   that you can give to your own agent.
 - Invalid configuration raises `askyourdb.ConfigError`.
 
+## Safety
+
+askyourdb sends your question and your database schema to the LLM provider you choose,
+and runs the SQL the model writes. The static validator and the review pass reduce the
+risk of a bad query, but they are not a security boundary. Connect with a **read-only
+database account** that can see only the tables you are comfortable sharing, and read
+the SQL printed with each answer. See [SECURITY.md](SECURITY.md) for details and how to
+report a vulnerability.
+
 ## Exit codes
 
 | Code | Meaning                                                          |
@@ -166,6 +180,8 @@ uv sync --extra google        # the demo defaults to a Gemini model
 uv run python examples/school_demo.py         # asks the school database one question
 uv run pytest                 # tests, with a 90% coverage gate
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
 ## License
 
