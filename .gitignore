@@ -36,3 +36,6 @@ CLAUDE.md
 project.MD
 docs/superpowers/
 .superpowers/
+
+# Evaluation output
+evals/results/
