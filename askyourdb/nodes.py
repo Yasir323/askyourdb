@@ -1,5 +1,5 @@
-from askyourdb.states import AnalystState
 from askyourdb.sql_validator import SqlValidator
+from askyourdb.states import AnalystState
 
 
 def generate_sql_node(state: AnalystState, model) -> AnalystState:
@@ -10,9 +10,7 @@ def generate_sql_node(state: AnalystState, model) -> AnalystState:
             "Fix it using this feedback:\n"
             f"{state['error_feedback']}"
         )
-    result = model.invoke({
-        "question": prompt_question
-    })
+    result = model.invoke({"question": prompt_question})
     return {
         **state,
         "sql_query": result,
@@ -22,25 +20,18 @@ def generate_sql_node(state: AnalystState, model) -> AnalystState:
 
 
 def validate_sql_node(state: AnalystState, validator: SqlValidator) -> AnalystState:
-    result = validator.validate(
-        state["sql_query"].sql
-    )
+    result = validator.validate(state["sql_query"].sql)
     if result["is_valid"]:
         # normalize state: store the possibly-rewritten (LIMIT-injected) SQL
-        updated_query = state["sql_query"].model_copy(
-            update={"sql": result["sql_query"]}
-        )
+        updated_query = state["sql_query"].model_copy(update={"sql": result["sql_query"]})
         return {
             **state,
             "sql_query": updated_query,
             "row_limit": result.get("row_limit"),
-            "error_feedback": None
+            "error_feedback": None,
         }
     else:
-        return {
-            **state,
-            "error_feedback": "; ".join(result["error_message"])
-        }
+        return {**state, "error_feedback": "; ".join(result["error_message"])}
 
 
 def route_after_static_validation(state: AnalystState) -> str:
@@ -55,23 +46,20 @@ def route_after_static_validation(state: AnalystState) -> str:
 def semantic_validate_sql_node(state: AnalystState, validator) -> dict:
     query = state["sql_query"]
 
-    result = validator.invoke({
-        "question": state["question"],
-        "schema": state["schema"],
-        "dialect": state["dialect"],
-        "sql": query.sql,
-        "reasoning": query.reasoning,
-    })
+    result = validator.invoke(
+        {
+            "question": state["question"],
+            "schema": state["schema"],
+            "dialect": state["dialect"],
+            "sql": query.sql,
+            "reasoning": query.reasoning,
+        }
+    )
 
     if result.is_valid:
         return {"error_feedback": None}
 
-    return {
-        "error_feedback": (
-            "Semantic validation failed: "
-            f"{result.feedback}"
-        )
-    }
+    return {"error_feedback": (f"Semantic validation failed: {result.feedback}")}
 
 
 def route_after_semantic_validation(state: AnalystState) -> str:
@@ -87,20 +75,10 @@ def route_after_semantic_validation(state: AnalystState) -> str:
 def execute_sql_node(state: AnalystState, executor) -> AnalystState:
     try:
         rows = executor.execute_query(state["sql_query"])
-        return {
-            **state,
-            "rows": rows,
-            "execution_error": None,
-            "error_feedback": None
-        }
+        return {**state, "rows": rows, "execution_error": None, "error_feedback": None}
     except Exception as e:
         message = f"SQL execution failed: {_database_message(e)}"
-        return {
-            **state,
-            "rows": None,
-            "execution_error": message,
-            "error_feedback": message
-        }
+        return {**state, "rows": None, "execution_error": message, "error_feedback": message}
 
 
 def _database_message(error: Exception) -> str:
@@ -137,12 +115,14 @@ def _row_limit_note(state: AnalystState) -> str:
 def summarize_results_node(state: AnalystState, summarizer) -> dict:
     summary_attempts = state.get("summary_attempts", 0) + 1
     try:
-        summary = summarizer.invoke({
-            "question": state["question"],
-            "sql": state["sql_query"].sql,
-            "rows": state["rows"],
-            "row_note": _row_limit_note(state),
-        })
+        summary = summarizer.invoke(
+            {
+                "question": state["question"],
+                "sql": state["sql_query"].sql,
+                "rows": state["rows"],
+                "row_note": _row_limit_note(state),
+            }
+        )
 
         return {
             "summary": summary,

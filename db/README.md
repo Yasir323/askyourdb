@@ -2,7 +2,7 @@
 
 A Dockerised PostgreSQL 17 instance with a school-management schema and deterministic
 dummy data. It exists as a realistic introspection target for the schema summarizer in
-`main.py`.
+`examples/school_demo.py`.
 
 See [SCHEMA.md](SCHEMA.md) for the entity relationship diagram.
 
@@ -45,15 +45,15 @@ the volume and start over:
 docker compose down -v && docker compose up -d
 ```
 
-## Using it from `main.py`
+## Using it from `examples/school_demo.py`
 
-`main.py` loads `.env` and reads the `ASKYOURDB_*` variables. `.env.example` already
+`examples/school_demo.py` loads `.env` and reads the `ASKYOURDB_*` variables. `.env.example` already
 points `ASKYOURDB_DSN` at this container; add your model key:
 
 ```bash
 cp .env.example .env   # set ASKYOURDB_API_KEY
 uv sync --extra google
-uv run python main.py
+uv run python examples/school_demo.py
 ```
 
 ## Seeded volumes

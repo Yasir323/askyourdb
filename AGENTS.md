@@ -1,43 +1,30 @@
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
+# Notes for contributors and coding agents
 
-This project is indexed by GitNexus as **askyourdb** (799 symbols, 1408 relationships, 21 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+askyourdb answers plain-English questions about a SQL database. An LLM writes a
+read-only `SELECT`, the SQL is validated statically, a second LLM pass reviews it, the
+query runs, and the result is summarized.
 
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+## Layout
 
-## Always Do
+- `askyourdb/` — the package. `analyst.py` is the public entry point (`SQLAnalyst`),
+  `cli.py` the command line, `graph.py` and `nodes.py` the LangGraph pipeline,
+  `sql_validator.py` the static checks, `executor.py` query execution.
+- `tests/` — unit tests; `tests/integration/` runs the pipeline against SQLite.
+- `db/` and `docker-compose.yml` — a sample PostgreSQL school database.
+- `examples/school_demo.py` — a demo script against that database.
 
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+## Commands
 
-## Never Do
+```bash
+uv sync --extra all     # install with every provider extra
+uv run pytest           # tests, with a 90% coverage gate
+```
 
-- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
-- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+## Conventions
 
-## Resources
-
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/askyourdb/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/askyourdb/clusters` | All functional areas |
-| `gitnexus://repo/askyourdb/processes` | All execution flows |
-| `gitnexus://repo/askyourdb/process/{name}` | Step-by-step execution trace |
-
-## CLI
-
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-
-<!-- gitnexus:end -->
+- Keep the safety model intact: queries must stay read-only, single-statement and
+  row-limited. Changes to `sql_validator.py` need tests for both the allowed and the
+  rejected case.
+- Never commit API keys or `.env`. Use `.env.example` and `askyourdb.example.toml` for
+  documented settings.
+- Match the surrounding code's style, naming and comment density.

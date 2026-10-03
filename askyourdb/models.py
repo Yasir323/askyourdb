@@ -32,19 +32,18 @@ def build_llm(config: LLMConfig):
     except ImportError as error:
         extra = PROVIDER_EXTRAS.get(config.provider)
         hint = (
-            f'pip install "askyourdb[{extra}]"' if extra
+            f'pip install "askyourdb[{extra}]"'
+            if extra
             else f"install the LangChain integration package for '{config.provider}'"
         )
         raise ConfigError(
-            f"The '{config.provider}' model provider is not installed. "
-            f"Run: {hint}\n({error})"
+            f"The '{config.provider}' model provider is not installed. Run: {hint}\n({error})"
         ) from None
     except Exception as error:
         # Provider SDKs raise their own errors here (missing credentials, bad
         # arguments). Keep one line, and never echo the key back.
         raise ConfigError(
-            f"Could not initialize model '{config.model}': "
-            f"{_describe_init_error(error, config)}"
+            f"Could not initialize model '{config.model}': {_describe_init_error(error, config)}"
         ) from None
 
 
@@ -94,10 +93,12 @@ def build_sql_generator(schema_text: str, dialect: str, llm_config: LLMConfig):
     The schema and dialect are the same for every question, so they are bound
     once with .partial(). Only {question} is left to supply at call time.
     """
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SQL_GEN_SYSTEM),
-        ("human", "{question}"),
-    ]).partial(
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", SQL_GEN_SYSTEM),
+            ("human", "{question}"),
+        ]
+    ).partial(
         dialect=dialect,
         schema=schema_text,
     )
@@ -165,17 +166,19 @@ Return concise, actionable feedback explaining exactly what should change.
 
 
 def build_sql_semantic_validator(llm_config: LLMConfig):
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", SEMANTIC_VALIDATION_SYSTEM),
-        (
-            "human",
-            "Question:\n{question}\n\n"
-            "Database schema:\n{schema}\n\n"
-            "SQL dialect:\n{dialect}\n\n"
-            "Generated SQL:\n{sql}\n\n"
-            "Generator reasoning:\n{reasoning}",
-        ),
-    ])
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", SEMANTIC_VALIDATION_SYSTEM),
+            (
+                "human",
+                "Question:\n{question}\n\n"
+                "Database schema:\n{schema}\n\n"
+                "SQL dialect:\n{dialect}\n\n"
+                "Generated SQL:\n{sql}\n\n"
+                "Generator reasoning:\n{reasoning}",
+            ),
+        ]
+    )
 
     model = build_llm(llm_config)
 
@@ -199,15 +202,14 @@ Return:
 
 
 def build_result_summarizer(llm_config: LLMConfig):
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", RESULT_SUMMARY_SYSTEM),
-        (
-            "human",
-            "Question:\n{question}\n\n"
-            "SQL used:\n{sql}\n\n"
-            "Rows returned:\n{rows}"
-            "{row_note}",
-        ),
-    ])
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", RESULT_SUMMARY_SYSTEM),
+            (
+                "human",
+                "Question:\n{question}\n\nSQL used:\n{sql}\n\nRows returned:\n{rows}{row_note}",
+            ),
+        ]
+    )
     model = build_llm(llm_config)
     return prompt | model.with_structured_output(ResultSummary)

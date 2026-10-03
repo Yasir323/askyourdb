@@ -28,9 +28,9 @@ def sqlite_dsn(tmp_path):
     dsn = f"sqlite:///{tmp_path / 'people.sqlite'}"
     engine = create_engine(dsn)
     with engine.begin() as connection:
-        connection.execute(text(
-            "CREATE TABLE people (person_id INTEGER PRIMARY KEY, name TEXT NOT NULL)"
-        ))
+        connection.execute(
+            text("CREATE TABLE people (person_id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
+        )
         connection.execute(text("INSERT INTO people VALUES (1, 'Ada'), (2, 'Grace')"))
     engine.dispose()
     return dsn
@@ -38,22 +38,25 @@ def sqlite_dsn(tmp_path):
 
 @pytest.fixture
 def fake_llm(monkeypatch):
-    model = ScriptedChatModel({
-        SQLQuery: SQLQuery(
-            sql="SELECT name FROM people ORDER BY person_id",
-            reasoning="List people.",
-            tables_used=["people"],
-        ),
-        SQLSemanticValidation: SQLSemanticValidation(is_valid=True),
-        ResultSummary: ResultSummary(
-            answer="Ada and Grace.",
-            row_count=2,
-            sql_used="SELECT name FROM people ORDER BY person_id LIMIT 100",
-        ),
-    })
+    model = ScriptedChatModel(
+        {
+            SQLQuery: SQLQuery(
+                sql="SELECT name FROM people ORDER BY person_id",
+                reasoning="List people.",
+                tables_used=["people"],
+            ),
+            SQLSemanticValidation: SQLSemanticValidation(is_valid=True),
+            ResultSummary: ResultSummary(
+                answer="Ada and Grace.",
+                row_count=2,
+                sql_used="SELECT name FROM people ORDER BY person_id LIMIT 100",
+            ),
+        }
+    )
     calls = []
     monkeypatch.setattr(
-        models, "init_chat_model",
+        models,
+        "init_chat_model",
         lambda name, **kwargs: calls.append((name, kwargs)) or model,
     )
     model.calls = calls
@@ -63,8 +66,10 @@ def fake_llm(monkeypatch):
 def make_config(dsn, **models_config):
     return AnalystConfig(
         database={"dsn": dsn},
-        models={"generator": {"model": "anthropic:claude-sonnet-5", "api_key": "gen-key"},
-                **models_config},
+        models={
+            "generator": {"model": "anthropic:claude-sonnet-5", "api_key": "gen-key"},
+            **models_config,
+        },
     )
 
 
@@ -115,8 +120,9 @@ def test_context_manager_closes_engine(sqlite_dsn, fake_llm):
 def test_construction_failure_closes_engine(sqlite_dsn, monkeypatch):
     closed = []
     original_close = SchemaIntrospector.close
-    monkeypatch.setattr(SchemaIntrospector, "close",
-                        lambda self: closed.append(True) or original_close(self))
+    monkeypatch.setattr(
+        SchemaIntrospector, "close", lambda self: closed.append(True) or original_close(self)
+    )
 
     def missing(*args, **kwargs):
         raise ImportError("requires the langchain-anthropic package")
@@ -145,8 +151,9 @@ def test_missing_database_driver_is_a_config_error(sqlite_dsn, fake_llm, monkeyp
 
 
 def stored_threads(analyst):
-    return {item.config["configurable"]["thread_id"]
-            for item in analyst._graph.checkpointer.list(None)}
+    return {
+        item.config["configurable"]["thread_id"] for item in analyst._graph.checkpointer.list(None)
+    }
 
 
 def test_ask_without_thread_id_discards_its_checkpoints(sqlite_dsn, fake_llm):
@@ -172,8 +179,11 @@ def test_ask_reports_each_step_as_it_starts(sqlite_dsn, fake_llm):
 
     assert result["success"] is True
     assert [e.step for e in events] == [
-        "generate_sql", "validate_sql", "semantic_validate_sql",
-        "execute_sql", "summarize_results",
+        "generate_sql",
+        "validate_sql",
+        "semantic_validate_sql",
+        "execute_sql",
+        "summarize_results",
     ]
     assert events[0].attempt == 1 and events[0].retry_reason is None
 

@@ -38,29 +38,30 @@ VERBOSE_HELP = "also show the SQL, row count, caveats, steps and library warning
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="askyourdb",
-        description="Ask questions of your database in plain English, "
-                    "using your own LLM API key.",
+        description="Ask questions of your database in plain English, using your own LLM API key.",
     )
     parser.add_argument("--verbose", action="store_true", help=VERBOSE_HELP)
+
     # --verbose is also accepted after the subcommand. There it defaults to
     # SUPPRESS so it doesn't reset a --verbose given before the subcommand.
     # Each parser gets its own action: set_defaults() mutates shared ones.
     def verbose():
         options = argparse.ArgumentParser(add_help=False)
-        options.add_argument("--verbose", action="store_true",
-                             default=argparse.SUPPRESS, help=VERBOSE_HELP)
+        options.add_argument(
+            "--verbose", action="store_true", default=argparse.SUPPRESS, help=VERBOSE_HELP
+        )
         return options
 
     parser.add_argument(
-        "--config", metavar="PATH",
+        "--config",
+        metavar="PATH",
         help="TOML config file (default: ASKYOURDB_* environment variables)",
     )
     commands = parser.add_subparsers(dest="command")
     ask = commands.add_parser("ask", help="answer one question and exit", parents=[verbose()])
     ask.add_argument("question")
     ask.add_argument("--json", action="store_true", help="print the full result as JSON")
-    commands.add_parser("repl", help="interactive session (the default)",
-                        parents=[verbose()])
+    commands.add_parser("repl", help="interactive session (the default)", parents=[verbose()])
     return parser
 
 
@@ -94,10 +95,7 @@ def _library_output(verbose: bool):
 def _run(args: argparse.Namespace) -> int:
     configure_langsmith()
     try:
-        config = (
-            AnalystConfig.from_toml(args.config) if args.config
-            else AnalystConfig.from_env()
-        )
+        config = AnalystConfig.from_toml(args.config) if args.config else AnalystConfig.from_env()
         analyst = SQLAnalyst(config)
     except ConfigError as error:
         print(f"Configuration error: {error}", file=sys.stderr)
@@ -106,8 +104,10 @@ def _run(args: argparse.Namespace) -> int:
         print(f"Could not connect to the database: {_first_line(error)}", file=sys.stderr)
         return EXIT_CONFIG_ERROR
     except Exception as error:
-        print(f"Could not start askyourdb: {type(error).__name__}: {_first_line(error)}",
-              file=sys.stderr)
+        print(
+            f"Could not start askyourdb: {type(error).__name__}: {_first_line(error)}",
+            file=sys.stderr,
+        )
         return EXIT_CONFIG_ERROR
 
     with analyst:
@@ -123,8 +123,10 @@ def run_ask(analyst: SQLAnalyst, question: str, *, as_json: bool, verbose: bool)
     else:
         result, steps = _ask_with_progress(analyst, question)
         # Failures go to stderr so scripts can keep stdout for answers.
-        print(format_result(result, verbose=verbose, steps=steps),
-              file=sys.stdout if result["success"] else sys.stderr)
+        print(
+            format_result(result, verbose=verbose, steps=steps),
+            file=sys.stdout if result["success"] else sys.stderr,
+        )
     return EXIT_OK if result["success"] else EXIT_QUERY_FAILED
 
 
@@ -166,8 +168,11 @@ def format_result(result: dict, verbose: bool = False, steps: list | None = None
             if len(rows) > MAX_TABLE_ROWS:
                 lines.append(f"… {len(rows) - MAX_TABLE_ROWS} more rows (use --json for all)")
         if result.get("truncated"):
-            lines += ["", f"Only the first {len(rows)} rows were fetched (row limit); "
-                          "ask a narrower question to see the rest."]
+            lines += [
+                "",
+                f"Only the first {len(rows)} rows were fetched (row limit); "
+                "ask a narrower question to see the rest.",
+            ]
     if verbose:
         lines += _verbose_details(result, steps or [])
     return "\n".join(lines)
@@ -189,10 +194,14 @@ def _verbose_details(result: dict, steps: list) -> list[str]:
     for event in retries:
         lines.append(f"Retry {event.attempt}/{event.max_attempts}: {event.retry_reason}")
     if steps:
-        lines += ["", "Steps: " + ", ".join(
-            f"{STEP_LABELS.get(event.step, event.step)} {seconds:.1f}s"
-            for event, seconds in steps
-        )]
+        lines += [
+            "",
+            "Steps: "
+            + ", ".join(
+                f"{STEP_LABELS.get(event.step, event.step)} {seconds:.1f}s"
+                for event, seconds in steps
+            ),
+        ]
     return lines
 
 
@@ -204,7 +213,9 @@ def format_rows(rows: list[dict]) -> str:
     widths = [max(len(line[i]) for line in table) for i in range(len(headers))]
 
     def render(cells):
-        return "  ".join(cell.ljust(width) for cell, width in zip(cells, widths)).rstrip()
+        return "  ".join(
+            cell.ljust(width) for cell, width in zip(cells, widths, strict=False)
+        ).rstrip()
 
     return "\n".join(
         [render(table[0]), "  ".join("-" * width for width in widths)]
@@ -305,8 +316,13 @@ def _ask(analyst: SQLAnalyst, question: str, on_progress=None) -> dict:
         return analyst.ask(question, on_progress=on_progress)
     except Exception as error:
         return {
-            "success": False, "answer": None, "row_count": 0, "sql_used": None,
-            "caveats": [], "rows": [], "truncated": False,
+            "success": False,
+            "answer": None,
+            "row_count": 0,
+            "sql_used": None,
+            "caveats": [],
+            "rows": [],
+            "truncated": False,
             "error": f"{type(error).__name__}: {_first_line(error)}",
         }
 

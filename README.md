@@ -1,10 +1,19 @@
 # askyourdb
 
+[![CI](https://github.com/Yasir323/askyourdb/actions/workflows/ci.yml/badge.svg)](https://github.com/Yasir323/askyourdb/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+
 Ask a SQL database questions in plain English, using your own LLM API key.
 An LLM writes a read-only `SELECT` for your question. The SQL is then validated
 statically (a single read-only statement, known tables, known columns where they
 are qualified with a table, and a `LIMIT` is enforced), a second LLM pass reviews it for correctness, the query runs, and the
 results are summarized in plain English. You always see the SQL that ran.
+
+> **Status: early alpha.** Answers have not been systematically evaluated for accuracy,
+> and an LLM can write a query that runs fine but answers the wrong question. Check the
+> SQL shown with each answer before relying on a result. The package is not published
+> on PyPI yet; install it from GitHub as shown below.
 
 ## Install
 
@@ -12,7 +21,14 @@ Install the core package plus the extra for the LLM provider you want to use. On
 that provider's SDK is installed:
 
 ```bash
-pip install "askyourdb[anthropic]"
+pip install "askyourdb[anthropic] @ git+https://github.com/Yasir323/askyourdb.git"
+```
+
+Or install the command-line tool in its own environment with
+[uv](https://docs.astral.sh/uv/):
+
+```bash
+uv tool install "askyourdb[anthropic] @ git+https://github.com/Yasir323/askyourdb.git"
 ```
 
 | Extra       | Installs                 | Example model string                 |
@@ -146,6 +162,15 @@ print(result["sql_used"])
   that you can give to your own agent.
 - Invalid configuration raises `askyourdb.ConfigError`.
 
+## Safety
+
+askyourdb sends your question and your database schema to the LLM provider you choose,
+and runs the SQL the model writes. The static validator and the review pass reduce the
+risk of a bad query, but they are not a security boundary. Connect with a **read-only
+database account** that can see only the tables you are comfortable sharing, and read
+the SQL printed with each answer. See [SECURITY.md](SECURITY.md) for details and how to
+report a vulnerability.
+
 ## Exit codes
 
 | Code | Meaning                                                          |
@@ -163,6 +188,15 @@ The repository includes a sample school database and a demo script:
 docker compose up -d          # PostgreSQL with the school schema and data (see db/README.md)
 cp .env.example .env          # fill in ASKYOURDB_API_KEY
 uv sync --extra google        # the demo defaults to a Gemini model
-uv run python main.py         # asks the school database one question
+uv run python examples/school_demo.py         # asks the school database one question
 uv run pytest                 # tests, with a 90% coverage gate
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
+
+## License
+
+askyourdb is licensed under the [Apache License 2.0](LICENSE). You may use, modify and
+redistribute it, including commercially, provided you keep the [`NOTICE`](NOTICE) file
+and the license text with your copies, and mark any files you changed. See the
+license for the full terms.

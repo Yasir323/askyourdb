@@ -4,9 +4,14 @@ from pydantic import ValidationError
 from askyourdb.config import AnalystConfig, ConfigError, LLMConfig
 
 ENV_VARS = [
-    "ASKYOURDB_DSN", "ASKYOURDB_DIALECT", "ASKYOURDB_MODEL", "ASKYOURDB_API_KEY",
-    "ASKYOURDB_SEMANTIC_MODEL", "ASKYOURDB_SEMANTIC_API_KEY",
-    "ASKYOURDB_SUMMARY_MODEL", "ASKYOURDB_SUMMARY_API_KEY",
+    "ASKYOURDB_DSN",
+    "ASKYOURDB_DIALECT",
+    "ASKYOURDB_MODEL",
+    "ASKYOURDB_API_KEY",
+    "ASKYOURDB_SEMANTIC_MODEL",
+    "ASKYOURDB_SEMANTIC_API_KEY",
+    "ASKYOURDB_SUMMARY_MODEL",
+    "ASKYOURDB_SUMMARY_API_KEY",
 ]
 DSN = "postgresql+psycopg://reader:hunter2@db.example.com/shop"
 
@@ -46,11 +51,14 @@ def test_explicit_stage_config_wins_over_generator():
     assert config.models.resolved_semantic_validator.model == "anthropic:claude-sonnet-5"
 
 
-@pytest.mark.parametrize(("dsn", "dialect"), [
-    ("sqlite:///data.db", "SQLite"),
-    ("mysql+pymysql://u:p@h/d", "MySQL"),
-    ("postgresql://u:p@h/d", "PostgreSQL"),
-])
+@pytest.mark.parametrize(
+    ("dsn", "dialect"),
+    [
+        ("sqlite:///data.db", "SQLite"),
+        ("mysql+pymysql://u:p@h/d", "MySQL"),
+        ("postgresql://u:p@h/d", "PostgreSQL"),
+    ],
+)
 def test_dialect_inferred_from_dsn(dsn, dialect):
     config = AnalystConfig(database={"dsn": dsn}, models={"generator": {"model": "openai:gpt-5"}})
 
@@ -63,8 +71,10 @@ def test_explicit_dialect_is_kept():
 
 def test_unknown_backend_requires_explicit_dialect():
     with pytest.raises(ValidationError, match="ASKYOURDB_DIALECT"):
-        AnalystConfig(database={"dsn": "mssql+pyodbc://u:p@h/d"},
-                      models={"generator": {"model": "openai:gpt-5"}})
+        AnalystConfig(
+            database={"dsn": "mssql+pyodbc://u:p@h/d"},
+            models={"generator": {"model": "openai:gpt-5"}},
+        )
 
 
 @pytest.mark.parametrize("model", ["gpt-5", ":gpt-5", "openai:", ""])
@@ -83,8 +93,10 @@ def test_secrets_are_masked():
 
 def test_invalid_dsn_error_does_not_echo_it():
     with pytest.raises(ValidationError) as error:
-        AnalystConfig(database={"dsn": "not a url with secret-pw"},
-                      models={"generator": {"model": "openai:gpt-5"}})
+        AnalystConfig(
+            database={"dsn": "not a url with secret-pw"},
+            models={"generator": {"model": "openai:gpt-5"}},
+        )
 
     assert "secret-pw" not in str(error.value)
     assert "not a valid SQLAlchemy URL" in str(error.value)
@@ -191,8 +203,10 @@ def test_from_env_rejects_unknown_override():
 
 def test_dsn_with_unencoded_password_chars_does_not_echo_it():
     with pytest.raises(ValidationError) as error:
-        AnalystConfig(database={"dsn": "postgresql+psycopg://u:p@ss:w0rd@127.0.0.1:1/db"},
-                      models={"generator": {"model": "openai:gpt-5"}})
+        AnalystConfig(
+            database={"dsn": "postgresql+psycopg://u:p@ss:w0rd@127.0.0.1:1/db"},
+            models={"generator": {"model": "openai:gpt-5"}},
+        )
 
     assert "w0rd" not in str(error.value)
     assert "not a valid SQLAlchemy URL" in str(error.value)
