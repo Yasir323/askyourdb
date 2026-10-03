@@ -6,7 +6,7 @@ All notable changes to this project are documented here. The format follows
 
 ## [0.1.0] - Unreleased
 
-First public release.
+First public release. Not published on PyPI; install from GitHub.
 
 ### Added
 - Ask a SQL database questions in plain English, from the `askyourdb` CLI or the

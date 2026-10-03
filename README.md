@@ -1,8 +1,7 @@
 # askyourdb
 
 [![CI](https://github.com/Yasir323/askyourdb/actions/workflows/ci.yml/badge.svg)](https://github.com/Yasir323/askyourdb/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/askyourdb)](https://pypi.org/project/askyourdb/)
-[![Python](https://img.shields.io/pypi/pyversions/askyourdb)](https://pypi.org/project/askyourdb/)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 Ask a SQL database questions in plain English, using your own LLM API key.
@@ -11,13 +10,25 @@ statically (a single read-only statement, known tables, known columns where they
 are qualified with a table, and a `LIMIT` is enforced), a second LLM pass reviews it for correctness, the query runs, and the
 results are summarized in plain English. You always see the SQL that ran.
 
+> **Status: early alpha.** Answers have not been systematically evaluated for accuracy,
+> and an LLM can write a query that runs fine but answers the wrong question. Check the
+> SQL shown with each answer before relying on a result. The package is not published
+> on PyPI yet; install it from GitHub as shown below.
+
 ## Install
 
 Install the core package plus the extra for the LLM provider you want to use. Only
 that provider's SDK is installed:
 
 ```bash
-pip install "askyourdb[anthropic]"
+pip install "askyourdb[anthropic] @ git+https://github.com/Yasir323/askyourdb.git"
+```
+
+Or install the command-line tool in its own environment with
+[uv](https://docs.astral.sh/uv/):
+
+```bash
+uv tool install "askyourdb[anthropic] @ git+https://github.com/Yasir323/askyourdb.git"
 ```
 
 | Extra       | Installs                 | Example model string                 |
