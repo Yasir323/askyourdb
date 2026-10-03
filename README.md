@@ -10,10 +10,12 @@ statically (a single read-only statement, known tables, known columns where they
 are qualified with a table, and a `LIMIT` is enforced), a second LLM pass reviews it for correctness, the query runs, and the
 results are summarized in plain English. You always see the SQL that ran.
 
-> **Status: early alpha.** Answers have not been systematically evaluated for accuracy,
-> and an LLM can write a query that runs fine but answers the wrong question. Check the
-> SQL shown with each answer before relying on a result. The package is not published
-> on PyPI yet; install it from GitHub as shown below.
+> **Status: early alpha.** An LLM can write a query that runs fine but answers the wrong
+> question, so check the SQL shown with each answer before relying on a result. On a small
+> evaluation against the bundled school database (one model, 35 questions) it answered
+> nearly all of them correctly, but it sometimes invents an answer when the data does not
+> exist. Details and limits are in [evals/README.md](evals/README.md). The package is not
+> published on PyPI yet; install it from GitHub as shown below.
 
 ## Install
 

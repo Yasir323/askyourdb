@@ -18,3 +18,4 @@ First public release. Not published on PyPI; install from GitHub.
 - Progress output, `--verbose`, `--json`, and the executed SQL shown with every answer.
 - Configuration through environment variables or a TOML file.
 - A sample PostgreSQL school database and demo in `examples/`.
+- An accuracy evaluation in `evals/`: 43 questions with reference SQL, scored against the school database.
