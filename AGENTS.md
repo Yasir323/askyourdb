@@ -12,6 +12,7 @@ query runs, and the result is summarized.
 - `tests/` — unit tests; `tests/integration/` runs the pipeline against SQLite.
 - `db/` and `docker-compose.yml` — a sample PostgreSQL school database.
 - `examples/school_demo.py` — a demo script against that database.
+- `evals/` — an accuracy evaluation (questions, scoring, runner); see `evals/README.md`.
 
 ## Commands
 

@@ -26,6 +26,13 @@ To try the tool against a real model, start the sample database with
 4. Run the tests and ruff before you push.
 5. Open a pull request and describe what changed and why.
 
+## Measuring accuracy
+
+If you change a prompt or the pipeline, run the evaluation before and after and compare
+(see [evals/README.md](evals/README.md)). It makes real LLM calls, about 130 per full run,
+so mind your provider's quota. `uv run python -m evals.run --check-gold` validates the
+reference SQL and costs nothing.
+
 ## The safety model
 
 askyourdb lets an LLM write SQL against a real database, so the guardrails matter more
